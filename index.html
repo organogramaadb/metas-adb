@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acompanhamento de Metas | Amigos do Bem</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     TELA DE LOGIN
+════════════════════════════════════════════════════════════ -->
+<div id="lo">
+  <div class="lbox">
+    <div class="l-logo">
+      <img id="logo-img" alt="Logo Amigos do Bem">
+      <div class="l-brand">
+        <div class="l-org">Amigos do Bem</div>
+        <div class="l-tit">Acompanhamento<br>de Metas</div>
+      </div>
+    </div>
+    <div class="l-sub">Acesse com seu e-mail corporativo</div>
+    <form class="lf" onsubmit="doLogin(event)">
+      <div>
+        <label>E-mail</label>
+        <input type="email" id="inp-email" placeholder="nome@amigosdobem.org.br" required autofocus>
+      </div>
+      <div>
+        <label>Senha</label>
+        <input type="password" id="inp-pwd" placeholder="Senha" required>
+      </div>
+      <button type="submit" class="btn-in">Entrar</button>
+      <div class="lerr" id="lerr">E-mail ou senha incorretos.</div>
+    </form>
+    <div class="ldem">
+      <p>Acesso de demonstração</p>
+      <button class="dbt" onclick="fillDemo('admin@amigosdobem.org.br','admin')">🔑 Administrador — acesso total</button>
+      <button class="dbt" onclick="fillDemo('daniel.benedetti@amigosdobem.org.br','admin')">👤 Daniel Benedetti — KPIs 1.01 e 1.06</button>
+      <button class="dbt" onclick="fillDemo('roberto.barroso@amigosdobem.org.br','admin')">👤 Roberto Barroso — KPI 3.01</button>
+      <button class="dbt" onclick="fillDemo('gisele.carneiro@amigosdobem.org.br','admin')">👤 Gisele Carneiro — KPI 1.02</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     APP PRINCIPAL
+════════════════════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- Header -->
+  <header>
+    <img class="h-logo" id="hdr-logo" alt="Logo">
+    <div class="h-names">
+      <div class="h-name">Acompanhamento de Metas</div>
+      <div class="h-sub-hd">Amigos do Bem</div>
+    </div>
+    <div class="h-sep"></div>
+    <span id="mode-badge" class="mode-badge">DEMO</span>
+    <div class="h-flex"></div>
+    <div class="h-user">
+      <div class="h-uname" id="hdr-uname">—</div>
+      <div class="h-urole" id="hdr-urole">—</div>
+    </div>
+    <div class="h-avatar" id="hdr-avatar">?</div>
+    <button class="h-btn" onclick="doLogout()">Sair</button>
+  </header>
+
+  <!-- Subbar / breadcrumb -->
+  <div id="sb">
+    <div class="sb-crumb" id="breadcrumb">
+      <a onclick="showIndex()">Início</a>
+    </div>
+    <div class="sb-ano" id="sb-ano">Exercício 2025</div>
+  </div>
+
+  <!-- Layout principal -->
+  <div id="main">
+
+    <!-- Sidebar de navegação -->
+    <div id="nav">
+      <div class="nav-hd">
+        <div class="nav-hd-t">KPIs</div>
+      </div>
+      <div class="nav-inner" id="nav-inner">
+        <!-- renderizado por JS -->
+      </div>
+    </div>
+
+    <!-- Área de conteúdo -->
+    <div id="content">
+
+      <!-- ── VIEW: INDEX ──────────────────────────────── -->
+      <div id="view-index">
+        <div class="index-welcome">
+          <h2 id="welcome-msg">Painel de Metas Corporativas</h2>
+          <p id="welcome-sub">Selecione um KPI para visualizar e editar as metas.</p>
+        </div>
+        <div id="index-areas">
+          <!-- renderizado por JS -->
+        </div>
+      </div>
+
+      <!-- ── VIEW: KPI DETAIL ─────────────────────────── -->
+      <div id="view-kpi">
+
+        <!-- Cabeçalho do KPI -->
+        <div class="kpi-header">
+          <div>
+            <div class="khd-code" id="kpi-code-hd">—</div>
+            <div class="khd-name" id="kpi-name-hd">—</div>
+            <div class="khd-fields">
+              <div class="khd-field">
+                <span class="khd-label">Responsável</span>
+                <span class="khd-val" id="kpi-resp-hd">—</span>
+              </div>
+              <div class="khd-field">
+                <span class="khd-label">Diretoria</span>
+                <span class="khd-val" id="kpi-dir-hd">—</span>
+              </div>
+              <div class="khd-field">
+                <span class="khd-label">Área</span>
+                <span class="khd-val" id="kpi-area-hd">—</span>
+              </div>
+              <div class="khd-field">
+                <span class="khd-label">Período</span>
+                <span class="khd-val" id="kpi-periodo-hd">Jan – Dez 2025</span>
+              </div>
+            </div>
+          </div>
+          <div class="khd-btns">
+            <button class="btn-back" onclick="showIndex()">← Voltar</button>
+          </div>
+        </div>
+
+        <!-- Cards superiores -->
+        <div class="kpi-cards-row" id="kpi-cards-row">
+          <!-- renderizado por JS -->
+        </div>
+
+        <!-- Seção: Metas -->
+        <div class="section">
+          <div class="sec-hd">
+            <div>
+              <div class="sec-title">Metas do KPI</div>
+              <div class="sec-sub" id="metas-periodo-sub">Acumulado até o último mês realizado</div>
+            </div>
+            <div class="sec-btns" id="sec-btns-metas">
+              <!-- botões renderizados por JS conforme permissão -->
+            </div>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl" id="metas-table">
+              <thead>
+                <tr>
+                  <th style="width:30px">#</th>
+                  <th>Meta</th>
+                  <th class="tbl-c">Direção</th>
+                  <th class="tbl-c">Peso</th>
+                  <th class="tbl-r">Meta Acum.</th>
+                  <th class="tbl-r">Real. Acum.</th>
+                  <th class="tbl-c" style="min-width:90px">Atingimento</th>
+                  <th class="tbl-c">Pontuação</th>
+                  <th class="tbl-c" style="min-width:100px">Meses</th>
+                  <th class="tbl-c">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="metas-tbody">
+                <tr><td colspan="10" class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-t">Nenhuma meta carregada</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Seção: Projetos -->
+        <div class="section">
+          <div class="sec-hd">
+            <div>
+              <div class="sec-title">Projetos e Iniciativas</div>
+              <div class="sec-sub">Vinculados às metas deste KPI</div>
+            </div>
+            <div class="sec-btns" id="sec-btns-proj">
+              <!-- renderizado por JS conforme permissão -->
+            </div>
+          </div>
+          <div class="tbl-wrap">
+            <table class="proj-tbl" id="proj-table">
+              <thead>
+                <tr>
+                  <th>Projeto / Iniciativa</th>
+                  <th>Meta Vinculada</th>
+                  <th class="tbl-c">Status</th>
+                  <th class="tbl-c">Prioridade</th>
+                  <th class="tbl-c">Prazo</th>
+                  <th class="tbl-c" style="min-width:90px">Progresso</th>
+                  <th>Próxima Ação</th>
+                  <th class="tbl-c">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="proj-tbody">
+                <tr><td colspan="8" class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-t">Nenhum projeto cadastrado</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /view-kpi -->
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ═══════════════════════════════════════════════════════
+     DRAWER — Edição de Meta
+════════════════════════════════════════════════════════════ -->
+<div id="drawer-overlay" onclick="closeDrawer()"></div>
+<div id="drawer">
+  <div class="drw-hd">
+    <div>
+      <div class="drw-hd-t" id="drw-title">Editar Meta</div>
+      <div class="drw-hd-s" id="drw-sub">—</div>
+    </div>
+    <button class="drw-close" onclick="closeDrawer()">×</button>
+  </div>
+  <div class="drw-tabs">
+    <button class="drw-tab on" onclick="switchDrawerTab('dados',this)">Dados da Meta</button>
+    <button class="drw-tab" onclick="switchDrawerTab('realizado',this)">Realizado Mensal</button>
+    <button class="drw-tab" onclick="switchDrawerTab('obs',this)">Observações</button>
+  </div>
+  <div class="drw-body">
+
+    <!-- Tab: Dados da Meta -->
+    <div id="drw-tab-dados">
+      <div class="fg">
+        <div class="fgt">Identificação</div>
+        <div class="fr s1">
+          <div class="fi"><label>Nome da Meta</label>
+            <input type="text" id="drw-nome" readonly>
+          </div>
+        </div>
+        <div class="fr">
+          <div class="fi"><label>Responsável</label>
+            <input type="text" id="drw-resp" readonly>
+          </div>
+          <div class="fi"><label>Unidade de Medida</label>
+            <input type="text" id="drw-unidade" readonly>
+          </div>
+        </div>
+      </div>
+      <div class="fg">
+        <div class="fgt">Parâmetros</div>
+        <div class="fr">
+          <div class="fi"><label>Tipo de Formato</label>
+            <select id="drw-formato" class="dirty">
+              <option value="numero_inteiro">Número Inteiro</option>
+              <option value="percentual">Percentual</option>
+              <option value="moeda">Valor Monetário (R$)</option>
+              <option value="decimal">Decimal</option>
+            </select>
+          </div>
+          <div class="fi"><label>Bom Quando</label>
+            <select id="drw-bom" class="dirty">
+              <option value="Maior">Maior (↑ melhor)</option>
+              <option value="Menor">Menor (↓ melhor)</option>
+            </select>
+          </div>
+        </div>
+        <div class="fr">
+          <div class="fi"><label>Peso da Meta</label>
+            <input type="number" id="drw-peso" step="0.1" min="0" max="1" class="dirty">
+          </div>
+          <div class="fi"><label>Status</label>
+            <select id="drw-status" class="dirty">
+              <option value="Ativa">Ativa</option>
+              <option value="Suspensa">Suspensa</option>
+              <option value="Concluída">Concluída</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="fg">
+        <div class="fgt">Meta Mensal (valores planejados)</div>
+        <div class="months-grid" id="drw-meta-grid">
+          <!-- renderizado por JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Realizado Mensal -->
+    <div id="drw-tab-realizado" style="display:none">
+      <div class="fg">
+        <div class="fgt">Valores Realizados — 2025</div>
+        <p style="font-size:11px;color:#aaa;margin-bottom:12px">Preencha os meses com valores realizados. Deixe em branco os meses não apurados.</p>
+        <div class="months-grid" id="drw-real-grid">
+          <!-- renderizado por JS -->
+        </div>
+      </div>
+      <div class="fg" style="margin-top:8px">
+        <div class="fgt">Resumo do Período</div>
+        <div id="drw-resumo" style="font-size:12px;color:#666;line-height:1.8">
+          <!-- renderizado por JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Observações -->
+    <div id="drw-tab-obs" style="display:none">
+      <div class="fg">
+        <div class="fgt">Observações da Meta</div>
+        <div class="fr s1">
+          <div class="fi"><label>Observações</label>
+            <textarea id="drw-obs" rows="5" placeholder="Registre comentários, justificativas ou pontos de atenção sobre esta meta..." class="dirty"></textarea>
+          </div>
+        </div>
+        <div class="fr s1">
+          <div class="fi"><label>Última Atualização</label>
+            <input type="text" id="drw-ult-at" readonly>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /drw-body -->
+  <div class="drw-act">
+    <button class="btn-cancel" onclick="closeDrawer()">Cancelar</button>
+    <button class="btn-save" onclick="saveDrawer()">💾 Salvar Alterações</button>
+  </div>
+</div><!-- /drawer -->
+
+<!-- ═══════════════════════════════════════════════════════
+     MODAL — Novo / Editar Projeto
+════════════════════════════════════════════════════════════ -->
+<div class="overlay" id="proj-modal">
+  <div class="modal">
+    <div class="mhd">
+      <div class="mhd-t" id="modal-title">Novo Projeto</div>
+      <button class="mhd-x" onclick="closeModal()">×</button>
+    </div>
+    <div class="mbd">
+      <input type="hidden" id="proj-id">
+      <div class="fg">
+        <div class="fgt">Identificação</div>
+        <div class="fr s1">
+          <div class="fi"><label>Nome do Projeto / Iniciativa *</label>
+            <input type="text" id="proj-nome" placeholder="Ex.: Redução de Custos Operacionais — Fase 1">
+          </div>
+        </div>
+        <div class="fr s1">
+          <div class="fi"><label>Descrição</label>
+            <textarea id="proj-desc" rows="2" placeholder="Descreva o objetivo e escopo do projeto..."></textarea>
+          </div>
+        </div>
+        <div class="fr">
+          <div class="fi"><label>Meta Vinculada *</label>
+            <select id="proj-meta-sel">
+              <option value="">— Selecione —</option>
+            </select>
+          </div>
+          <div class="fi"><label>Responsável</label>
+            <input type="text" id="proj-resp" placeholder="Nome do responsável">
+          </div>
+        </div>
+      </div>
+      <div class="fg">
+        <div class="fgt">Status e Progresso</div>
+        <div class="fr s3">
+          <div class="fi"><label>Status</label>
+            <select id="proj-status">
+              <option value="Não iniciado">Não iniciado</option>
+              <option value="Em andamento">Em andamento</option>
+              <option value="Em atraso">Em atraso</option>
+              <option value="Concluído">Concluído</option>
+              <option value="Suspenso">Suspenso</option>
+              <option value="Cancelado">Cancelado</option>
+            </select>
+          </div>
+          <div class="fi"><label>Prioridade</label>
+            <select id="proj-prio">
+              <option value="Alta">Alta</option>
+              <option value="Média">Média</option>
+              <option value="Baixa">Baixa</option>
+            </select>
+          </div>
+          <div class="fi"><label>Prazo</label>
+            <input type="date" id="proj-prazo">
+          </div>
+        </div>
+        <div class="fr">
+          <div class="fi"><label>% de Conclusão (0–100)</label>
+            <input type="number" id="proj-pct" min="0" max="100" placeholder="0">
+          </div>
+          <div class="fi"><label>Responsável pela Ação</label>
+            <input type="text" id="proj-resp-acao" placeholder="Nome">
+          </div>
+        </div>
+      </div>
+      <div class="fg">
+        <div class="fgt">Próximos Passos</div>
+        <div class="fr s1">
+          <div class="fi"><label>Próxima Ação</label>
+            <input type="text" id="proj-prox-acao" placeholder="Descreva a próxima ação concreta...">
+          </div>
+        </div>
+        <div class="fr s1">
+          <div class="fi"><label>Observações</label>
+            <textarea id="proj-obs" rows="2" placeholder="Riscos, dependências, comentários..."></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-save" onclick="saveProject()">💾 Salvar Projeto</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SCRIPTS (ordem de carregamento)
+════════════════════════════════════════════════════════════ -->
+<script src="js/data.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
