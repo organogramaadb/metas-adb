@@ -56,16 +56,21 @@ async function apiLoadInitData() {
     const data = await gasGet('getInitData');
     if (!data) return false;
 
-    // Substitui DB com dados do servidor
-    DB.metas        = data.metas        || [];
-    DB.metasMensais = data.metasMensais || [];
-    DB.projetos     = data.projetos     || [];
-    DB.logs         = data.logs         || [];
+    // Só substitui DB se o servidor devolver dados reais.
+    // Enquanto as planilhas estiverem vazias, mantém os dados demo.
+    if (data.metas?.length)        DB.metas        = data.metas;
+    if (data.metasMensais?.length) DB.metasMensais = data.metasMensais;
+    if (data.projetos?.length)     DB.projetos     = data.projetos;
+    if (data.logs?.length)         DB.logs         = data.logs;
 
-    toast('✅ Dados carregados do servidor.', 'ok');
+    const fonte = data.metas?.length ? 'servidor' : 'demo (planilha ainda vazia)';
+    toast(`✅ Conectado — dados: ${fonte}`, data.metas?.length ? 'ok' : '');
     return true;
   } catch (err) {
-    toast('Erro ao carregar dados: ' + err.message, 'err');
+    // GAS indisponível: continua com dados demo sem quebrar o app
+    console.warn('[api] GAS indisponível, usando dados demo:', err.message);
+    const badge = document.getElementById('mode-badge');
+    if (badge) { badge.textContent = 'DEMO'; badge.classList.remove('live'); }
     return false;
   }
 }
