@@ -62,6 +62,14 @@ async function apiLoadInitData() {
     if (data.metasMensais?.length) DB.metasMensais = data.metasMensais;
     if (data.projetos?.length)     DB.projetos     = data.projetos;
     if (data.logs?.length)         DB.logs         = data.logs;
+    // Merge kpis: atualiza entradas que o servidor conhece, mantém o resto do data.js
+    if (data.kpis?.length) {
+      data.kpis.forEach(sk => {
+        const idx = KPIS.findIndex(k => k.id === sk.id);
+        if (idx >= 0) Object.assign(KPIS[idx], sk);
+        else KPIS.push(sk);
+      });
+    }
 
     const fonte = data.metas?.length ? 'servidor' : 'demo (planilha ainda vazia)';
     toast(`✅ Conectado — dados: ${fonte}`, data.metas?.length ? 'ok' : '');
@@ -93,6 +101,11 @@ async function apiSaveProject(proj) {
 // ── Remove um projeto ─────────────────────────────────────────────
 async function apiDeleteProject(id) {
   return gasPost('deleteProject', { id });
+}
+
+// ── Persiste cabeçalho de um KPI ─────────────────────────────────
+async function apiSaveKpi(kpi) {
+  return gasPost('saveKpi', kpi);
 }
 
 // ── Envia entrada de log ao servidor ─────────────────────────────

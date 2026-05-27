@@ -164,6 +164,7 @@ function showKPI(kpiId) {
   document.getElementById('kpi-resp-hd').textContent = kpi.responsavel;
   document.getElementById('kpi-dir-hd').textContent  = kpi.diretoria;
   document.getElementById('kpi-area-hd').textContent = kpi.area;
+  document.getElementById('btn-edit-kpi').style.display = isAdmin() ? '' : 'none';
 
   const { totalPontuacao, resultados, ultimoMes } = calcKPI(kpiId, ANO_ATUAL);
   document.getElementById('kpi-periodo-hd').textContent =
@@ -531,6 +532,55 @@ function saveDrawer() {
 
   // Re-renderiza a página do KPI
   if (currentKpiId) showKPI(currentKpiId);
+}
+
+// ── Modal Editar KPI ──────────────────────────────────────────────
+function openKpiEdit() {
+  if (!currentKpiId) return;
+  const kpi = KPIS.find(k => k.id === currentKpiId);
+  if (!kpi) return;
+  document.getElementById('kpi-edit-nome').value = kpi.nome;
+  document.getElementById('kpi-edit-resp').value = kpi.responsavel;
+  document.getElementById('kpi-edit-dir').value  = kpi.diretoria;
+  document.getElementById('kpi-edit-area').value = kpi.area;
+  document.getElementById('kpi-edit-modal').classList.add('on');
+}
+
+function closeKpiEdit() {
+  document.getElementById('kpi-edit-modal').classList.remove('on');
+}
+
+function saveKpiEdit() {
+  if (!currentKpiId) return;
+  const kpi = KPIS.find(k => k.id === currentKpiId);
+  if (!kpi) return;
+
+  const nome = document.getElementById('kpi-edit-nome').value.trim();
+  const resp = document.getElementById('kpi-edit-resp').value.trim();
+  const dir  = document.getElementById('kpi-edit-dir').value.trim();
+  const area = document.getElementById('kpi-edit-area').value.trim();
+
+  if (!nome) { toast('Nome do KPI é obrigatório.', 'warn'); return; }
+
+  // Atualiza em memória
+  kpi.nome         = nome;
+  kpi.responsavel  = resp;
+  kpi.diretoria    = dir;
+  kpi.area         = area;
+
+  closeKpiEdit();
+  toast('✅ KPI atualizado!', 'ok');
+  showKPI(currentKpiId); // re-renderiza o cabeçalho
+
+  // Persiste no servidor
+  if (isLiveMode()) {
+    apiSaveKpi(kpi).catch(err => toast('Erro ao salvar KPI: ' + err.message, 'err'));
+    addLog('UPDATE', 'kpis', kpi.id, 'header', '', JSON.stringify({ nome, resp, dir, area }));
+    DB.logs.filter(l => !l._synced).forEach(l => {
+      l._synced = true;
+      apiAddLog(l).catch(() => {});
+    });
+  }
 }
 
 // ── Modal de Projeto ──────────────────────────────────────────────

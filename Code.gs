@@ -58,6 +58,7 @@ function doPost(e) {
     if (action === 'saveMetaMensal') return jsonResp(saveMetaMensal(body.payload));
     if (action === 'saveProject')    return jsonResp(saveProject(body.payload));
     if (action === 'deleteProject')  return jsonResp(deleteProject(body.payload));
+    if (action === 'saveKpi')        return jsonResp(saveKpi(body.payload));
     if (action === 'addLog')         return jsonResp(addLog(body.payload));
     return jsonResp({ error: 'Ação desconhecida: ' + action });
   } catch (err) { return jsonResp({ error: err.message }); }
@@ -67,6 +68,7 @@ function doPost(e) {
 function getInitData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const rawUsuarios = readSheet(ss, SH_USUARIOS,      COLS_USUARIOS);
+  const rawKpis     = readSheet(ss, SH_KPIS,          COLS_KPIS);
   const rawMetas    = readSheet(ss, SH_METAS,         COLS_METAS);
   const rawMensais  = readSheet(ss, SH_METAS_MENSAIS, COLS_METAS_MENSAIS);
   const rawProj     = readSheet(ss, SH_PROJETOS,      COLS_PROJETOS);
@@ -99,7 +101,9 @@ function getInitData() {
 
   const logs = rawLogs.reverse().slice(0, 200);
 
-  return { usuarios, metas, metasMensais, projetos, logs };
+  const kpis = rawKpis.map(k => ({ ...k, ativo: bool(k.ativo) }));
+
+  return { usuarios, kpis, metas, metasMensais, projetos, logs };
 }
 
 // ── authenticate ─────────────────────────────────────────────
@@ -116,6 +120,12 @@ function authenticate(payload) {
   if (!u) return { error: 'Credenciais inválidas' };
   const { senha, ...safe } = u;
   return { ok: true, usuario: { ...safe, ativo: true } };
+}
+
+// ── saveKpi ───────────────────────────────────────────────────
+function saveKpi(payload) {
+  if (!payload || !payload.id) return { error: 'id obrigatório' };
+  return upsertRow(SH_KPIS, COLS_KPIS, payload);
 }
 
 // ── saveMeta ─────────────────────────────────────────────────

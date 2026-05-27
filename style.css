@@ -135,6 +135,8 @@ header{height:var(--hh);background:#111;display:flex;align-items:center;padding:
 .khd-btns{display:flex;gap:8px;flex-shrink:0;align-items:flex-start;margin-left:16px}
 .btn-back{background:#fff;border:1px solid #ddd;border-radius:4px;padding:7px 12px;font-size:12px;color:#555;cursor:pointer;white-space:nowrap}
 .btn-back:hover{border-color:#999;color:#111}
+.btn-edit-kpi{background:#fff;border:1px solid #c8a84b;border-radius:4px;padding:7px 12px;font-size:12px;color:#8a6800;cursor:pointer;white-space:nowrap}
+.btn-edit-kpi:hover{background:#fdf6e3;border-color:#8a6800}
 
 /* Cards superiores */
 .kpi-cards-row{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}

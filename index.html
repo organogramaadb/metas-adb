@@ -129,6 +129,7 @@
             </div>
           </div>
           <div class="khd-btns">
+            <button class="btn-edit-kpi" id="btn-edit-kpi" onclick="openKpiEdit()" style="display:none">✏️ Editar KPI</button>
             <button class="btn-back" onclick="showIndex()">← Voltar</button>
           </div>
         </div>
@@ -412,6 +413,42 @@
     <div class="mft">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-save" onclick="saveProject()">💾 Salvar Projeto</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar KPI ════════════════════════════════════════ -->
+<div class="overlay" id="kpi-edit-modal">
+  <div class="modal" style="max-width:480px">
+    <div class="mhd">
+      <div class="mhd-t">Editar Cabeçalho do KPI</div>
+      <button class="mhd-x" onclick="closeKpiEdit()">×</button>
+    </div>
+    <div class="mbd">
+      <div class="fg">
+        <div class="fr s1">
+          <div class="fi"><label>Nome do KPI</label>
+            <input type="text" id="kpi-edit-nome" placeholder="Ex.: KPI Administração Central">
+          </div>
+        </div>
+        <div class="fr">
+          <div class="fi"><label>Responsável</label>
+            <input type="text" id="kpi-edit-resp" placeholder="Nome do responsável">
+          </div>
+          <div class="fi"><label>Diretoria</label>
+            <input type="text" id="kpi-edit-dir" placeholder="Nome da diretoria">
+          </div>
+        </div>
+        <div class="fr">
+          <div class="fi"><label>Área</label>
+            <input type="text" id="kpi-edit-area" placeholder="Ex.: Administração">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn-cancel" onclick="closeKpiEdit()">Cancelar</button>
+      <button class="btn-save" onclick="saveKpiEdit()">💾 Salvar</button>
     </div>
   </div>
 </div>
