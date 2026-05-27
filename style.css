@@ -231,10 +231,11 @@ table.tbl tbody tr:hover td{background:#fafafa}
 .fi input.dirty:focus,.fi select.dirty:focus,.fi textarea.dirty:focus{border-color:#b0a000}
 
 /* Grid mensal */
-.months-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:5px}
-.mi{display:flex;flex-direction:column;gap:3px}
-.mi label{font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;text-align:center}
-.mi input{text-align:right;padding:5px 5px;font-size:11px;border:1px solid #e0e0e0;border-radius:3px;font-family:inherit}
+/* Layout vertical dos meses — lista 2 colunas (mês + valor) */
+.months-list{display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
+.mi{display:flex;flex-direction:row;align-items:center;gap:8px}
+.mi label{font-size:11px;font-weight:700;color:#999;text-transform:uppercase;width:28px;flex-shrink:0;text-align:right}
+.mi input{flex:1;text-align:right;padding:5px 8px;font-size:12px;border:1px solid #e0e0e0;border-radius:3px;font-family:inherit}
 .mi input:focus{border-color:#111;outline:none}
 .mi input.has-val{background:#f8fff8;border-color:#c0ddc0}
 .mi input[data-type="meta"]{background:#fafafa}
@@ -308,7 +309,7 @@ table.proj-tbl tbody tr:hover td{background:#fafafa}
   .card-meta{min-width:100%}
   .modal{width:calc(100vw - 20px)}
   #drawer{width:100%}
-  .months-grid{grid-template-columns:repeat(4,1fr)}
+  /* .months-list já é vertical — sem ajuste necessário */
 }
 @media print{
   #lo,header,#sb,#nav,#drawer,#drawer-overlay,.overlay,#toast,.sec-btns,.khd-btns{display:none!important}

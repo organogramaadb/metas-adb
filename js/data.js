@@ -16,17 +16,42 @@ const USUARIOS = [
 
 // ── KPIs ──────────────────────────────────────────────────────────
 const KPIS = [
-  { id:'kpi-101', codigo:'1.01', nome:'KPI Administração Central',    area:'Administrativo', responsavel:'Daniel Benedetti', diretoria:'Fernando Medeiros', descricao:'Gestão dos custos administrativos centrais',           ativo:true },
-  { id:'kpi-102', codigo:'1.02', nome:'KPI Recursos Humanos',         area:'Administrativo', responsavel:'Gisele Carneiro',  diretoria:'Fernando Medeiros', descricao:'Gestão de pessoas, recrutamento e benefícios',          ativo:true },
-  { id:'kpi-103', codigo:'1.03', nome:'KPI Suprimentos',              area:'Administrativo', responsavel:'Roberto Zambeli',  diretoria:'Fernando Medeiros', descricao:'Eficiência do ciclo de compras e fornecedores',         ativo:true },
-  { id:'kpi-104', codigo:'1.04', nome:'KPI Administração Facilities', area:'Administrativo', responsavel:'Roberto Zambeli',  diretoria:'Fernando Medeiros', descricao:'Operação predial e infraestrutura física central',      ativo:true },
-  { id:'kpi-105', codigo:'1.05', nome:'KPI Departamento Pessoal',     area:'Administrativo', responsavel:'Vaga',             diretoria:'Fernando Medeiros', descricao:'Processamento de folha e compliance trabalhista',       ativo:true },
-  { id:'kpi-106', codigo:'1.06', nome:'KPI Controladoria',            area:'Administrativo', responsavel:'Daniel Benedetti', diretoria:'Fernando Medeiros', descricao:'Orçamento, forecast, controles internos e BI gerencial', ativo:true },
-  { id:'kpi-107', codigo:'1.07', nome:'KPI Informática',              area:'Administrativo', responsavel:'Alexandre Carrega',diretoria:'Fernando Medeiros', descricao:'Suporte, infraestrutura e licenças de tecnologia',      ativo:true },
-  { id:'kpi-201', codigo:'2.01', nome:'KPI Educação',                 area:'Educação',       responsavel:'Alceu Caldeira',   diretoria:'Alceu Caldeira',    descricao:'Centros de Transformação e programas educacionais',     ativo:true },
-  { id:'kpi-301', codigo:'3.01', nome:'KPI Produção',                 area:'Área Produtiva', responsavel:'Roberto Barroso',  diretoria:'Alcione Albanesi',  descricao:'Produção de amêndoa e controle de custos industriais',  ativo:true },
-  { id:'kpi-401', codigo:'4.01', nome:'KPI Captação PF',              area:'Investimentos Sociais', responsavel:'Alceu Caldeira', diretoria:'André de Luca', descricao:'Captação junto a pessoas físicas e fidelização',       ativo:true },
-  { id:'kpi-501', codigo:'5.02', nome:'KPI Programas Sociais',        area:'Programas Sociais',     responsavel:'Mirlane Sousa',  diretoria:'Alceu Caldeira', descricao:'Atendimento e impacto dos programas sociais',          ativo:true },
+  // ── ADMINISTRAÇÃO ──────────────────────────────────────────────
+  { id:'kpi-101',  codigo:'1.01', nome:'KPI Administração Central',       area:'Administração',         responsavel:'Daniel Benedetti',  diretoria:'Fernando Medeiros', descricao:'Gestão dos custos administrativos centrais', ativo:true },
+  { id:'kpi-102',  codigo:'1.02', nome:'KPI Recursos Humanos',            area:'Administração',         responsavel:'Gisele Carneiro',   diretoria:'Fernando Medeiros', descricao:'Gestão de pessoas, recrutamento e benefícios', ativo:true },
+  { id:'kpi-103',  codigo:'1.03', nome:'KPI Suprimentos',                 area:'Administração',         responsavel:'Roberto Zambeli',   diretoria:'Fernando Medeiros', descricao:'Eficiência do ciclo de compras e fornecedores', ativo:true },
+  { id:'kpi-104',  codigo:'1.04', nome:'KPI Administração Facilities',    area:'Administração',         responsavel:'Roberto Zambeli',   diretoria:'Fernando Medeiros', descricao:'Operação predial e infraestrutura física central', ativo:true },
+  { id:'kpi-105',  codigo:'1.05', nome:'KPI DP',                          area:'Administração',         responsavel:'Vaga',              diretoria:'Fernando Medeiros', descricao:'Processamento de folha e compliance trabalhista', ativo:true },
+  { id:'kpi-106a', codigo:'1.06', nome:'KPI Jurídico e Regulatórios',     area:'Administração',         responsavel:'Daniel Benedetti',  diretoria:'Fernando Medeiros', descricao:'Gestão jurídica e conformidade regulatória', ativo:true },
+  { id:'kpi-106',  codigo:'1.06', nome:'KPI Controladoria',               area:'Administração',         responsavel:'Daniel Benedetti',  diretoria:'Fernando Medeiros', descricao:'Orçamento, forecast, controles internos e BI gerencial', ativo:true },
+  { id:'kpi-107',  codigo:'1.07', nome:'KPI Informática',                 area:'Administração',         responsavel:'Alexandre Carrega', diretoria:'Fernando Medeiros', descricao:'Suporte, infraestrutura e licenças de tecnologia', ativo:true },
+  { id:'kpi-108',  codigo:'1.08', nome:'KPI Marketing',                   area:'Administração',         responsavel:'Daniel Benedetti',  diretoria:'Fernando Medeiros', descricao:'Comunicação institucional e campanhas de marketing', ativo:true },
+  // ── EDUCAÇÃO ───────────────────────────────────────────────────
+  { id:'kpi-201',  codigo:'2.01', nome:'KPI Educação',                    area:'Educação',              responsavel:'Alceu Caldeira',    diretoria:'Alceu Caldeira',    descricao:'Centros de Transformação e programas educacionais', ativo:true },
+  // ── ÁREA PRODUTIVA ─────────────────────────────────────────────
+  { id:'kpi-301',  codigo:'3.01', nome:'KPI Produção',                    area:'Área Produtiva',        responsavel:'Roberto Barroso',   diretoria:'Alcione Albanesi',  descricao:'Produção de amêndoa e controle de custos industriais', ativo:true },
+  { id:'kpi-303',  codigo:'3.03', nome:'KPI Logística',                   area:'Área Produtiva',        responsavel:'Roberto Barroso',   diretoria:'Alcione Albanesi',  descricao:'Gestão da cadeia logística e distribuição', ativo:true },
+  { id:'kpi-308',  codigo:'3.08', nome:'KPI Comercial',                   area:'Área Produtiva',        responsavel:'Roberto Barroso',   diretoria:'Alcione Albanesi',  descricao:'Vendas e relacionamento comercial', ativo:true },
+  { id:'kpi-309a', codigo:'3.09', nome:'KPI Campo — CE',                  area:'Área Produtiva',        responsavel:'Roberto Barroso',   diretoria:'Alcione Albanesi',  descricao:'Operações de campo — Ceará', ativo:true },
+  { id:'kpi-309b', codigo:'3.09', nome:'KPI Campo — Inajá',               area:'Área Produtiva',        responsavel:'Roberto Barroso',   diretoria:'Alcione Albanesi',  descricao:'Operações de campo — Inajá', ativo:true },
+  { id:'kpi-309c', codigo:'3.09', nome:'KPI Campo — CAT',                 area:'Área Produtiva',        responsavel:'Roberto Barroso',   diretoria:'Alcione Albanesi',  descricao:'Operações de campo — CAT', ativo:true },
+  { id:'kpi-310',  codigo:'3.10', nome:'KPI Bazar',                       area:'Área Produtiva',        responsavel:'Roberto Barroso',   diretoria:'Alcione Albanesi',  descricao:'Gestão das lojas bazar', ativo:true },
+  // ── INVESTIMENTOS SOCIAIS ──────────────────────────────────────
+  { id:'kpi-401a', codigo:'4.01', nome:'KPI Obras e Projetos',            area:'Investimentos Sociais', responsavel:'Alceu Caldeira',    diretoria:'André de Luca',     descricao:'Gestão de obras e projetos sociais', ativo:true },
+  { id:'kpi-405',  codigo:'4.05', nome:'KPI Energia',                     area:'Investimentos Sociais', responsavel:'Alceu Caldeira',    diretoria:'André de Luca',     descricao:'Gestão de infraestrutura de energia', ativo:true },
+  { id:'kpi-401b', codigo:'4.01', nome:'KPI Obras e Projetos SD',         area:'Investimentos Sociais', responsavel:'Alceu Caldeira',    diretoria:'André de Luca',     descricao:'Obras e projetos — Sertão do Desenvolvimento', ativo:true },
+  { id:'kpi-403a', codigo:'4.03', nome:'KPI Água',                        area:'Investimentos Sociais', responsavel:'Alceu Caldeira',    diretoria:'André de Luca',     descricao:'Gestão de infraestrutura hídrica', ativo:true },
+  { id:'kpi-403b', codigo:'4.03', nome:'KPI Assistência Social',          area:'Investimentos Sociais', responsavel:'Alceu Caldeira',    diretoria:'André de Luca',     descricao:'Programas de assistência social', ativo:true },
+  { id:'kpi-404',  codigo:'4.04', nome:'KPI Centro de Distribuição',      area:'Investimentos Sociais', responsavel:'Alceu Caldeira',    diretoria:'André de Luca',     descricao:'Operações do centro de distribuição', ativo:true },
+  // ── PROGRAMAS SOCIAIS ──────────────────────────────────────────
+  { id:'kpi-502',  codigo:'5.02', nome:'KPI Unidades',                    area:'Programas Sociais',     responsavel:'Mirlane Sousa',     diretoria:'Alceu Caldeira',    descricao:'Gestão das unidades de atendimento', ativo:true },
+  { id:'kpi-504',  codigo:'5.04', nome:'KPI Saúde',                       area:'Programas Sociais',     responsavel:'Mirlane Sousa',     diretoria:'Alceu Caldeira',    descricao:'Programas e indicadores de saúde', ativo:true },
+  { id:'kpi-505',  codigo:'5.05', nome:'KPI Frota',                       area:'Programas Sociais',     responsavel:'Mirlane Sousa',     diretoria:'Alceu Caldeira',    descricao:'Gestão da frota de veículos', ativo:true },
+  { id:'kpi-507',  codigo:'5.07', nome:'KPI Distribuição',                area:'Programas Sociais',     responsavel:'Mirlane Sousa',     diretoria:'Alceu Caldeira',    descricao:'Logística de distribuição social', ativo:true },
+  { id:'kpi-510',  codigo:'5.10', nome:'KPI Desenv. Institucional — Eventos', area:'Programas Sociais', responsavel:'Mirlane Sousa',     diretoria:'Alceu Caldeira',    descricao:'Eventos institucionais e captação', ativo:true },
+  { id:'kpi-508',  codigo:'5.08', nome:'KPI Desenv. Institucional — PJ', area:'Programas Sociais',     responsavel:'Mirlane Sousa',     diretoria:'Alceu Caldeira',    descricao:'Desenvolvimento institucional pessoa jurídica', ativo:true },
+  { id:'kpi-509',  codigo:'5.09', nome:'KPI Desenv. Institucional — PF', area:'Programas Sociais',     responsavel:'Mirlane Sousa',     diretoria:'Alceu Caldeira',    descricao:'Desenvolvimento institucional pessoa física', ativo:true },
+  { id:'kpi-511',  codigo:'5.11', nome:'KPI Central de Doação',           area:'Programas Sociais',     responsavel:'Mirlane Sousa',     diretoria:'Alceu Caldeira',    descricao:'Gestão da central de doações', ativo:true },
 ];
 
 // ── Metas ─────────────────────────────────────────────────────────

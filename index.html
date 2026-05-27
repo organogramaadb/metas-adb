@@ -234,15 +234,12 @@
         <div class="fgt">Identificação</div>
         <div class="fr s1">
           <div class="fi"><label>Nome da Meta</label>
-            <input type="text" id="drw-nome" readonly>
+            <input type="text" id="drw-nome" class="dirty">
           </div>
         </div>
-        <div class="fr">
+        <div class="fr s1">
           <div class="fi"><label>Responsável</label>
-            <input type="text" id="drw-resp" readonly>
-          </div>
-          <div class="fi"><label>Unidade de Medida</label>
-            <input type="text" id="drw-unidade" readonly>
+            <input type="text" id="drw-resp" class="dirty">
           </div>
         </div>
       </div>
@@ -279,7 +276,7 @@
       </div>
       <div class="fg">
         <div class="fgt">Meta Mensal (valores planejados)</div>
-        <div class="months-grid" id="drw-meta-grid">
+        <div class="months-list" id="drw-meta-grid">
           <!-- renderizado por JS -->
         </div>
       </div>
@@ -290,7 +287,7 @@
       <div class="fg">
         <div class="fgt">Valores Realizados — 2025</div>
         <p style="font-size:11px;color:#aaa;margin-bottom:12px">Preencha os meses com valores realizados. Deixe em branco os meses não apurados.</p>
-        <div class="months-grid" id="drw-real-grid">
+        <div class="months-list" id="drw-real-grid">
           <!-- renderizado por JS -->
         </div>
       </div>

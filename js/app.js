@@ -348,7 +348,6 @@ function openDrawer(metaId, kpiId) {
   document.getElementById('drw-sub').textContent = `${meta.codigo_kpi} · Meta ${meta.seq}`;
   document.getElementById('drw-nome').value    = meta.nome;
   document.getElementById('drw-resp').value    = meta.responsavel;
-  document.getElementById('drw-unidade').value = meta.unidade_medida;
   document.getElementById('drw-formato').value = meta.tipo_formato;
   document.getElementById('drw-bom').value     = meta.bom_quando;
   document.getElementById('drw-peso').value    = meta.peso;
@@ -431,7 +430,9 @@ function saveDrawer() {
 
   const before = JSON.parse(JSON.stringify(meta));
 
-  // Salva parâmetros
+  // Salva parâmetros (todos os campos editáveis)
+  meta.nome         = document.getElementById('drw-nome').value.trim()    || meta.nome;
+  meta.responsavel  = document.getElementById('drw-resp').value.trim()    || meta.responsavel;
   meta.tipo_formato = document.getElementById('drw-formato').value;
   meta.bom_quando   = document.getElementById('drw-bom').value;
   meta.peso         = parseFloat(document.getElementById('drw-peso').value) || meta.peso;
@@ -467,8 +468,10 @@ function saveDrawer() {
   }
 
   // Log de parâmetros alterados
-  if (before.peso !== meta.peso) addLog('UPDATE', 'metas', meta.id, 'peso', before.peso, meta.peso);
-  if (before.bom_quando !== meta.bom_quando) addLog('UPDATE', 'metas', meta.id, 'bom_quando', before.bom_quando, meta.bom_quando);
+  if (before.nome        !== meta.nome)        addLog('UPDATE', 'metas', meta.id, 'nome',        before.nome,        meta.nome);
+  if (before.responsavel !== meta.responsavel) addLog('UPDATE', 'metas', meta.id, 'responsavel', before.responsavel, meta.responsavel);
+  if (before.peso        !== meta.peso)        addLog('UPDATE', 'metas', meta.id, 'peso',        before.peso,        meta.peso);
+  if (before.bom_quando  !== meta.bom_quando)  addLog('UPDATE', 'metas', meta.id, 'bom_quando',  before.bom_quando,  meta.bom_quando);
 
   closeDrawer();
   toast('✅ Meta salva com sucesso!', 'ok');
