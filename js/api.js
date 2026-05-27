@@ -58,8 +58,21 @@ async function apiLoadInitData() {
 
     // Só substitui DB se o servidor devolver dados reais.
     // Enquanto as planilhas estiverem vazias, mantém os dados demo.
-    if (data.metas?.length)        DB.metas        = data.metas;
-    if (data.metasMensais?.length) DB.metasMensais = data.metasMensais;
+    if (data.metas?.length) {
+      // Garante que metas do servidor herdem campos novos (defaults) caso a
+      // coluna ainda não exista nas planilhas (ex.: formula_atingimento, tipo_acumulado).
+      DB.metas = data.metas.map(m => ({
+        formula_atingimento: 'real_sobre_meta',
+        tipo_acumulado:      'soma',
+        ...m,
+      }));
+    }
+    if (data.metasMensais?.length) {
+      // Força o ano do exercício vigente em todos os registros mensais.
+      // Necessário quando o ano foi alterado no app mas as planilhas ainda
+      // guardam o ano anterior (ex.: planilha tem 2025, app usa ANO_ATUAL=2026).
+      DB.metasMensais = data.metasMensais.map(r => ({ ...r, ano: ANO_ATUAL }));
+    }
     if (data.projetos?.length)     DB.projetos     = data.projetos;
     if (data.logs?.length)         DB.logs         = data.logs;
     // Merge kpis: atualiza entradas que o servidor conhece, mantém o resto do data.js
