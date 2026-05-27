@@ -2,7 +2,7 @@
 // app.js — Renderização, navegação, interações e inicialização
 // ===================================================================
 
-const ANO_ATUAL = 2025;
+const ANO_ATUAL = 2026;
 let currentKpiId = null;
 let drawerMetaId = null;
 let drawerCurrentTab = 'dados';
@@ -124,7 +124,7 @@ function showIndex() {
       const cls = scoreClass(totalPontuacao);
       const pctDisplay = (totalPontuacao * 100).toFixed(1) + '%';
       const barWidth = Math.min(100, totalPontuacao * 100).toFixed(1);
-      const periodo = ultimoMes > 0 ? `Até ${MESES_ABREV[ultimoMes-1]}/2025` : 'Sem realizado';
+      const periodo = ultimoMes > 0 ? `Até ${MESES_ABREV[ultimoMes-1]}/2026` : 'Sem realizado';
       html += `<div class="kpi-index-card" onclick="showKPI('${k.id}')">
         <div class="kic-code">${k.codigo}</div>
         <div class="kic-name">${k.nome}</div>
@@ -168,7 +168,7 @@ function showKPI(kpiId) {
 
   const { totalPontuacao, resultados, ultimoMes } = calcKPI(kpiId, ANO_ATUAL);
   document.getElementById('kpi-periodo-hd').textContent =
-    ultimoMes > 0 ? `Jan – ${MESES_ABREV[ultimoMes-1]} 2025 (acumulado)` : 'Jan – Dez 2025';
+    ultimoMes > 0 ? `Jan – ${MESES_ABREV[ultimoMes-1]} 2026 (acumulado)` : 'Jan – Dez 2026';
 
   // Cards superiores
   renderCards(totalPontuacao, resultados, ultimoMes);
@@ -185,7 +185,7 @@ function renderCards(totalPontuacao, resultados, ultimoMes) {
   const cls = scoreClass(totalPontuacao);
   const pctDisplay = (totalPontuacao * 100).toFixed(1) + '%';
   const barW = Math.min(100, totalPontuacao * 100).toFixed(1);
-  const periodo = ultimoMes > 0 ? `Acum. até ${MESES_ABREV[ultimoMes-1]}/2025` : 'Sem realizado apurado';
+  const periodo = ultimoMes > 0 ? `Acum. até ${MESES_ABREV[ultimoMes-1]}/2026` : 'Sem realizado apurado';
 
   let html = `<div class="card-total">
     <div class="ct-label">Pontuação Total do KPI</div>
@@ -215,7 +215,7 @@ function renderCards(totalPontuacao, resultados, ultimoMes) {
 
   document.getElementById('kpi-cards-row').innerHTML = html;
   document.getElementById('metas-periodo-sub').textContent =
-    ultimoMes > 0 ? `Acumulado Jan – ${MESES_ABREV[ultimoMes-1]}/2025` : 'Sem realizado apurado';
+    ultimoMes > 0 ? `Acumulado Jan – ${MESES_ABREV[ultimoMes-1]}/2026` : 'Sem realizado apurado';
 }
 
 // ── Tabela de Metas ───────────────────────────────────────────────
@@ -423,7 +423,7 @@ function updateDrawerResumo(meta) {
     <b>Realizado acumulado:</b> ${fmt(realAc, meta.tipo_formato)}<br>
     <b>Atingimento:</b> <span style="color:var(--${cls==='ok'?'ok':cls==='warn'?'warn':'err'})">${at}</span><br>
     <b>Pontuação ponderada:</b> ${(pontuacao*100).toFixed(1)}% (peso ${(meta.peso*100).toFixed(0)}%)<br>
-    <b>Último mês apurado:</b> ${ultimoMes > 0 ? MESES_ABREV[ultimoMes-1]+'/2025' : 'Nenhum'}
+    <b>Último mês apurado:</b> ${ultimoMes > 0 ? MESES_ABREV[ultimoMes-1]+'/2026' : 'Nenhum'}
   `;
 }
 
