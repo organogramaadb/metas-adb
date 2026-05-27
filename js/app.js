@@ -338,14 +338,35 @@ function openDrawer(metaId, kpiId) {
   let meta = metaId ? DB.metas.find(m => m.id === metaId) : null;
 
   if (!meta) {
-    // Nova meta (scaffolding mínimo para demo)
-    toast('Criação de nova meta disponível após integração com o banco de dados.', 'warn');
-    return;
+    // Nova meta — cria objeto em memória e 12 registros mensais vazios
+    if (!kpiId) return;
+    const kpi = KPIS.find(k => k.id === kpiId);
+    if (!kpi) return;
+    const existingSeqs = DB.metas.filter(m => m.id_kpi === kpiId).map(m => m.seq);
+    const nextSeq = existingSeqs.length ? Math.max(...existingSeqs) + 1 : 1;
+    const newId = 'm-' + Date.now().toString(36);
+    meta = {
+      id: newId, id_kpi: kpiId, codigo_kpi: kpi.codigo, seq: nextSeq,
+      nome: '', descricao: '', responsavel: kpi.responsavel || '',
+      diretoria: kpi.diretoria || '', tipo_formato: 'percentual',
+      unidade_medida: '%', bom_quando: 'Maior', peso: 0.5,
+      status: 'Ativa', obs: '', ult_at: new Date().toLocaleDateString('pt-BR'), ativo: true,
+      _isNew: true
+    };
+    DB.metas.push(meta);
+    for (let mes = 1; mes <= 12; mes++) {
+      DB.metasMensais.push({
+        id: `mm-${newId}-${mes}`, id_meta: newId, ano: ANO_ATUAL,
+        mes, valor_meta: null, valor_realizado: null, obs: ''
+      });
+    }
   }
 
   drawerMetaId = meta.id;
-  document.getElementById('drw-title').textContent = 'Editar Meta';
-  document.getElementById('drw-sub').textContent = `${meta.codigo_kpi} · Meta ${meta.seq}`;
+  document.getElementById('drw-title').textContent = meta._isNew ? 'Nova Meta' : 'Editar Meta';
+  document.getElementById('drw-sub').textContent = meta._isNew
+    ? `${meta.codigo_kpi} · Meta ${meta.seq} (nova)`
+    : `${meta.codigo_kpi} · Meta ${meta.seq}`;
   document.getElementById('drw-nome').value    = meta.nome;
   document.getElementById('drw-resp').value    = meta.responsavel;
   document.getElementById('drw-desc').value    = meta.descricao || '';
@@ -417,6 +438,14 @@ function switchDrawerTab(tab, btn) {
 }
 
 function closeDrawer() {
+  // Se era nova meta não salva → remove do DB para não poluir
+  if (drawerMetaId) {
+    const m = DB.metas.find(x => x.id === drawerMetaId);
+    if (m && m._isNew) {
+      DB.metas = DB.metas.filter(x => x.id !== drawerMetaId);
+      DB.metasMensais = DB.metasMensais.filter(x => x.id_meta !== drawerMetaId);
+    }
+  }
   document.getElementById('drawer').classList.remove('open');
   document.getElementById('drawer-overlay').classList.remove('on');
   drawerMetaId = null;
@@ -429,10 +458,15 @@ function saveDrawer() {
 
   if (!canEditMeta(meta)) { toast('Sem permissão para editar esta meta.', 'err'); return; }
 
+  const isNew = !!meta._isNew;
   const before = JSON.parse(JSON.stringify(meta));
 
+  // Validação obrigatória para nova meta
+  const novoNome = document.getElementById('drw-nome').value.trim();
+  if (isNew && !novoNome) { toast('Preencha o nome da meta antes de salvar.', 'warn'); return; }
+
   // Salva parâmetros (todos os campos editáveis)
-  meta.nome         = document.getElementById('drw-nome').value.trim()    || meta.nome;
+  meta.nome         = novoNome || meta.nome;
   meta.responsavel  = document.getElementById('drw-resp').value.trim()    || meta.responsavel;
   meta.descricao    = document.getElementById('drw-desc').value.trim();
   meta.tipo_formato = document.getElementById('drw-formato').value;
@@ -476,8 +510,9 @@ function saveDrawer() {
   if (before.peso        !== meta.peso)        addLog('UPDATE', 'metas', meta.id, 'peso',        before.peso,        meta.peso);
   if (before.bom_quando  !== meta.bom_quando)  addLog('UPDATE', 'metas', meta.id, 'bom_quando',  before.bom_quando,  meta.bom_quando);
 
+  delete meta._isNew;   // marca como persistida antes de fechar
   closeDrawer();
-  toast('✅ Meta salva com sucesso!', 'ok');
+  toast(isNew ? '✅ Nova meta criada com sucesso!' : '✅ Meta salva com sucesso!', 'ok');
 
   // Persiste no servidor (fire-and-forget — não bloqueia a UI)
   if (isLiveMode()) {
