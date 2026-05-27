@@ -11,7 +11,7 @@
 // em memória (comportamento de demonstração).
 // ===================================================================
 
-const GAS_URL = '';  // Exemplo: 'https://script.google.com/macros/.../exec'
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzbHgNavVdI-YRsZV63orQH7BeH3ggcCOhIZWHWT9g0ZGSMhmnaOkCW8-3ReuQB900fHw/exec';
 
 // ── Modo de operação ──────────────────────────────────────────────
 function isLiveMode() { return !!GAS_URL; }
