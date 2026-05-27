@@ -105,47 +105,68 @@ function getMesesComRealizado(idMeta, ano) {
 
 /**
  * Calcula os acumulados e atingimento de uma meta.
- * Retorna: { metaAc, realAc, atingimento, pontuacao, ultimoMes, registros }
+ *
+ * Campos da meta usados:
+ *   tipo_acumulado      — 'soma' (padrão) | 'media'
+ *     soma  → acumula todos os meses até ultimoMes (bom para volumes, despesas totais)
+ *     media → média dos meses (bom para percentuais, valores unitários)
+ *
+ *   formula_atingimento — 'real_sobre_meta' (padrão) | 'meta_sobre_real'
+ *     Define SOMENTE o valor exibido (atingimento).
+ *     A pontuação e a cor sempre usam bom_quando (scoringAt).
+ *
+ * Retorna: { metaAc, realAc, atingimento, scoringAt, pontuacao, ultimoMes, registros }
+ *   atingimento — valor para exibição (segue formula_atingimento)
+ *   scoringAt   — valor para cor/pontuação (>=1 = bom, baseado em bom_quando)
  */
 function calcMeta(meta, ano) {
   const { registros, ultimoMes } = getMesesComRealizado(meta.id, ano);
 
   if (ultimoMes === 0) {
-    return { metaAc: null, realAc: null, atingimento: null, pontuacao: 0, ultimoMes: 0, registros };
+    return { metaAc: null, realAc: null, atingimento: null, scoringAt: null, pontuacao: 0, ultimoMes: 0, registros };
   }
 
-  let metaAc = 0, realAc = 0;
+  const formula   = meta.formula_atingimento || 'real_sobre_meta';
+  const acumulado = meta.tipo_acumulado      || 'soma';
+
+  let metaSum = 0, realSum = 0, nMeta = 0, nReal = 0;
   for (const r of registros) {
     if (r.mes <= ultimoMes) {
-      metaAc += (r.valor_meta != null ? parseFloat(r.valor_meta) : 0);
-      realAc += (r.valor_realizado != null ? parseFloat(r.valor_realizado) : 0);
+      const vm = (r.valor_meta      != null && r.valor_meta      !== '') ? parseFloat(r.valor_meta)      : null;
+      const vr = (r.valor_realizado != null && r.valor_realizado !== '') ? parseFloat(r.valor_realizado) : null;
+      if (vm !== null) { metaSum += vm; nMeta++; }
+      if (vr !== null) { realSum += vr; nReal++; }
     }
   }
 
-  // Atingimento ajustado conforme "Bom quando"
+  // Aplica acumulado: soma mantém o total; média divide pelo nº de meses com valor
+  const metaAc = acumulado === 'media' ? (nMeta > 0 ? metaSum / nMeta : 0) : metaSum;
+  const realAc = acumulado === 'media' ? (nReal > 0 ? realSum / nReal : 0) : realSum;
+
+  // Atingimento para EXIBIÇÃO (fórmula configurável)
   let atingimento = null;
+  // Atingimento para COR / PONTUAÇÃO (sempre: bom_quando=Maior → real/meta; Menor → meta/real; >=1 = bom)
+  let scoringAt   = null;
+
   if (metaAc !== 0 && realAc !== 0) {
-    if (meta.bom_quando === 'Maior') {
-      atingimento = realAc / metaAc;           // >1 = bom
-    } else {
-      atingimento = metaAc / realAc;           // >1 = bom (gastou menos)
-    }
+    atingimento = formula === 'real_sobre_meta' ? realAc / metaAc : metaAc / realAc;
+    scoringAt   = meta.bom_quando === 'Maior'   ? realAc / metaAc : metaAc / realAc;
   } else if (metaAc === 0 && realAc === 0) {
     atingimento = 1;
+    scoringAt   = 1;
   }
 
-  // Pontuação ponderada (regra parametrizável — aqui: ≥100% = full, 90-100% = linear, <90% = 0)
+  // Pontuação ponderada usa scoringAt (≥100% = full, 90-100% = linear, <90% = 0)
   let pontuacao = 0;
-  if (atingimento !== null) {
-    if (atingimento >= 1.0) {
-      pontuacao = meta.peso;                              // full
-    } else if (atingimento >= 0.9) {
-      pontuacao = meta.peso * ((atingimento - 0.9) / 0.1); // 90-100% linear
+  if (scoringAt !== null) {
+    if (scoringAt >= 1.0) {
+      pontuacao = meta.peso;
+    } else if (scoringAt >= 0.9) {
+      pontuacao = meta.peso * ((scoringAt - 0.9) / 0.1);
     }
-    // abaixo de 90%: 0
   }
 
-  return { metaAc, realAc, atingimento, pontuacao, ultimoMes, registros };
+  return { metaAc, realAc, atingimento, scoringAt, pontuacao, ultimoMes, registros };
 }
 
 /**

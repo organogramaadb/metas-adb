@@ -17,7 +17,8 @@ const COLS_KPIS = ['id','codigo','nome','area','responsavel','diretoria','descri
 
 const COLS_METAS = [
   'id','id_kpi','codigo_kpi','seq','nome','descricao','responsavel','diretoria',
-  'tipo_formato','unidade_medida','bom_quando','peso','status','obs','ult_at','ativo'
+  'tipo_formato','unidade_medida','bom_quando','peso','status','obs','ult_at','ativo',
+  'formula_atingimento','tipo_acumulado'
 ];
 
 const COLS_METAS_MENSAIS = ['id','id_meta','ano','mes','valor_meta','valor_realizado','obs'];

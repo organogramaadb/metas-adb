@@ -196,9 +196,9 @@ function renderCards(totalPontuacao, resultados, ultimoMes) {
 
   for (const r of resultados) {
     const at = r.atingimento;
-    const cls2 = scoreClass(at);
+    const cls2 = scoreClass(r.scoringAt);
     const atDisplay = at !== null ? fmtPct(at) : '—';
-    const barW2 = at !== null ? Math.min(100, at * 100).toFixed(1) : 0;
+    const barW2 = r.scoringAt !== null ? Math.min(100, r.scoringAt * 100).toFixed(1) : 0;
     const pts = (r.pontuacao * 100).toFixed(1) + '%';
     html += `<div class="card-meta" onclick="openDrawer('${r.meta.id}')">
       <div class="cm-num">Meta ${r.meta.seq}</div>
@@ -237,7 +237,7 @@ function renderMetasTable(resultados, kpi) {
   for (const r of resultados) {
     const m = r.meta;
     const at = r.atingimento;
-    const cls = scoreClass(at);
+    const cls = scoreClass(r.scoringAt);
     const atDisplay = at !== null ? fmtPct(at) : '—';
     const metaFmt = r.metaAc !== null ? fmt(r.metaAc, m.tipo_formato) : '—';
     const realFmt = r.realAc !== null ? fmt(r.realAc, m.tipo_formato) : '—';
@@ -351,6 +351,7 @@ function openDrawer(metaId, kpiId) {
       nome: '', descricao: '', responsavel: kpi.responsavel || '',
       diretoria: kpi.diretoria || '', tipo_formato: 'percentual',
       unidade_medida: '%', bom_quando: 'Maior', peso: 0.5,
+      formula_atingimento: 'real_sobre_meta', tipo_acumulado: 'soma',
       status: 'Ativa', obs: '', ult_at: new Date().toLocaleDateString('pt-BR'), ativo: true,
       _isNew: true
     };
@@ -371,9 +372,11 @@ function openDrawer(metaId, kpiId) {
   document.getElementById('drw-nome').value    = meta.nome;
   document.getElementById('drw-resp').value    = meta.responsavel;
   document.getElementById('drw-desc').value    = meta.descricao || '';
-  document.getElementById('drw-formato').value = meta.tipo_formato;
-  document.getElementById('drw-bom').value     = meta.bom_quando;
-  document.getElementById('drw-peso').value    = meta.peso;
+  document.getElementById('drw-formato').value   = meta.tipo_formato;
+  document.getElementById('drw-bom').value       = meta.bom_quando;
+  document.getElementById('drw-formula').value   = meta.formula_atingimento || 'real_sobre_meta';
+  document.getElementById('drw-acumulado').value = meta.tipo_acumulado      || 'soma';
+  document.getElementById('drw-peso').value      = meta.peso;
   document.getElementById('drw-status').value  = meta.status || 'Ativa';
   document.getElementById('drw-obs').value     = meta.obs || '';
   document.getElementById('drw-ult-at').value  = meta.ult_at || '—';
@@ -412,9 +415,9 @@ function buildMonthGrids(meta) {
 }
 
 function updateDrawerResumo(meta) {
-  const { metaAc, realAc, atingimento, pontuacao, ultimoMes } = calcMeta(meta, ANO_ATUAL);
+  const { metaAc, realAc, atingimento, scoringAt, pontuacao, ultimoMes } = calcMeta(meta, ANO_ATUAL);
   const at = atingimento !== null ? fmtPct(atingimento) : '—';
-  const cls = scoreClass(atingimento);
+  const cls = scoreClass(scoringAt);
   document.getElementById('drw-resumo').innerHTML = `
     <b>Meta acumulada:</b> ${fmt(metaAc, meta.tipo_formato)}<br>
     <b>Realizado acumulado:</b> ${fmt(realAc, meta.tipo_formato)}<br>
@@ -470,9 +473,11 @@ function saveDrawer() {
   meta.nome         = novoNome || meta.nome;
   meta.responsavel  = document.getElementById('drw-resp').value.trim()    || meta.responsavel;
   meta.descricao    = document.getElementById('drw-desc').value.trim();
-  meta.tipo_formato = document.getElementById('drw-formato').value;
-  meta.bom_quando   = document.getElementById('drw-bom').value;
-  meta.peso         = parseFloat(document.getElementById('drw-peso').value) || meta.peso;
+  meta.tipo_formato         = document.getElementById('drw-formato').value;
+  meta.bom_quando           = document.getElementById('drw-bom').value;
+  meta.formula_atingimento  = document.getElementById('drw-formula').value;
+  meta.tipo_acumulado       = document.getElementById('drw-acumulado').value;
+  meta.peso                 = parseFloat(document.getElementById('drw-peso').value) || meta.peso;
   meta.status       = document.getElementById('drw-status').value;
   meta.obs          = document.getElementById('drw-obs').value;
   meta.ult_at       = new Date().toLocaleDateString('pt-BR');
