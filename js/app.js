@@ -348,6 +348,7 @@ function openDrawer(metaId, kpiId) {
   document.getElementById('drw-sub').textContent = `${meta.codigo_kpi} · Meta ${meta.seq}`;
   document.getElementById('drw-nome').value    = meta.nome;
   document.getElementById('drw-resp').value    = meta.responsavel;
+  document.getElementById('drw-desc').value    = meta.descricao || '';
   document.getElementById('drw-formato').value = meta.tipo_formato;
   document.getElementById('drw-bom').value     = meta.bom_quando;
   document.getElementById('drw-peso').value    = meta.peso;
@@ -433,6 +434,7 @@ function saveDrawer() {
   // Salva parâmetros (todos os campos editáveis)
   meta.nome         = document.getElementById('drw-nome').value.trim()    || meta.nome;
   meta.responsavel  = document.getElementById('drw-resp').value.trim()    || meta.responsavel;
+  meta.descricao    = document.getElementById('drw-desc').value.trim();
   meta.tipo_formato = document.getElementById('drw-formato').value;
   meta.bom_quando   = document.getElementById('drw-bom').value;
   meta.peso         = parseFloat(document.getElementById('drw-peso').value) || meta.peso;
@@ -470,6 +472,7 @@ function saveDrawer() {
   // Log de parâmetros alterados
   if (before.nome        !== meta.nome)        addLog('UPDATE', 'metas', meta.id, 'nome',        before.nome,        meta.nome);
   if (before.responsavel !== meta.responsavel) addLog('UPDATE', 'metas', meta.id, 'responsavel', before.responsavel, meta.responsavel);
+  if (before.descricao   !== meta.descricao)   addLog('UPDATE', 'metas', meta.id, 'descricao',   before.descricao,   meta.descricao);
   if (before.peso        !== meta.peso)        addLog('UPDATE', 'metas', meta.id, 'peso',        before.peso,        meta.peso);
   if (before.bom_quando  !== meta.bom_quando)  addLog('UPDATE', 'metas', meta.id, 'bom_quando',  before.bom_quando,  meta.bom_quando);
 
