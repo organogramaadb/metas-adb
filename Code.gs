@@ -252,13 +252,16 @@ function resetAndSeed() {
   // ── Metas ─────────────────────────────────────────────────
   const mSh = ss.getSheetByName(SH_METAS);
   [
-    ['m-101-1','kpi-101','1.01',1,'Controle de Despesas Adm.','Manter despesas administrativas centrais dentro do orçamento aprovado','Daniel Benedetti','Fernando Medeiros','moeda','R$','Menor',0.6,'Ativa','','26/05/2026','TRUE'],
-    ['m-101-2','kpi-101','1.01',2,'Índice de Satisfação Interna','Pesquisa de satisfação com serviços administrativos (NPS interno)','Daniel Benedetti','Fernando Medeiros','decimal','pontos','Maior',0.4,'Ativa','','15/03/2026','TRUE'],
-    ['m-102-1','kpi-102','1.02',1,'Taxa de Turnover','Percentual de saídas voluntárias em relação ao quadro total','Gisele Carneiro','Fernando Medeiros','percentual','%','Menor',0.4,'Ativa','','30/04/2026','TRUE'],
-    ['m-102-2','kpi-102','1.02',2,'Posições Preenchidas','Percentual de vagas preenchidas em relação ao headcount aprovado','Gisele Carneiro','Fernando Medeiros','percentual','%','Maior',0.6,'Ativa','Vagas de campo apresentam maior dificuldade','30/04/2026','TRUE'],
-    ['m-301-1','kpi-301','3.01',1,'Despesas de Produção','Controle total de despesas operacionais da unidade produtiva de amêndoa','Roberto Barroso','Alcione Albanesi','moeda','R$','Menor',0.5,'Ativa','Impacto da alta do diesel e insumos no Q1','30/04/2026','TRUE'],
-    ['m-301-2','kpi-301','3.01',2,'Custo Base Amêndoa','Custo unitário médio da base amêndoa (produção própria + compra)','Roberto Barroso','Alcione Albanesi','decimal','R$/kg','Menor',0.3,'Ativa','','30/04/2026','TRUE'],
-    ['m-301-3','kpi-301','3.01',3,'Produção Total','Volume total de amêndoa produzida no período (meta de produção)','Roberto Barroso','Alcione Albanesi','numero_inteiro','kg','Maior',0.2,'Ativa','Safra impactada por estiagem em mar/abr','30/04/2026','TRUE'],
+    // colunas: id, id_kpi, codigo_kpi, seq, nome, descricao, responsavel, diretoria,
+    //          tipo_formato, unidade_medida, bom_quando, peso, status, obs, ult_at, ativo,
+    //          formula_atingimento, tipo_acumulado
+    ['m-101-1','kpi-101','1.01',1,'Controle de Despesas Adm.','Manter despesas administrativas centrais dentro do orçamento aprovado','Daniel Benedetti','Fernando Medeiros','moeda','R$','Menor',0.6,'Ativa','','26/05/2026','TRUE','real_sobre_meta','soma'],
+    ['m-101-2','kpi-101','1.01',2,'Índice de Satisfação Interna','Pesquisa de satisfação com serviços administrativos (NPS interno)','Daniel Benedetti','Fernando Medeiros','decimal','pontos','Maior',0.4,'Ativa','','15/03/2026','TRUE','real_sobre_meta','media'],
+    ['m-102-1','kpi-102','1.02',1,'Taxa de Turnover','Percentual de saídas voluntárias em relação ao quadro total','Gisele Carneiro','Fernando Medeiros','percentual','%','Menor',0.4,'Ativa','','30/04/2026','TRUE','real_sobre_meta','media'],
+    ['m-102-2','kpi-102','1.02',2,'Posições Preenchidas','Percentual de vagas preenchidas em relação ao headcount aprovado','Gisele Carneiro','Fernando Medeiros','percentual','%','Maior',0.6,'Ativa','Vagas de campo apresentam maior dificuldade','30/04/2026','TRUE','real_sobre_meta','media'],
+    ['m-301-1','kpi-301','3.01',1,'Despesas de Produção','Controle total de despesas operacionais da unidade produtiva de amêndoa','Roberto Barroso','Alcione Albanesi','moeda','R$','Menor',0.5,'Ativa','Impacto da alta do diesel e insumos no Q1','30/04/2026','TRUE','real_sobre_meta','soma'],
+    ['m-301-2','kpi-301','3.01',2,'Custo Base Amêndoa','Custo unitário médio da base amêndoa (produção própria + compra)','Roberto Barroso','Alcione Albanesi','decimal','R$/kg','Menor',0.3,'Ativa','','30/04/2026','TRUE','real_sobre_meta','media'],
+    ['m-301-3','kpi-301','3.01',3,'Produção Total','Volume total de amêndoa produzida no período (meta de produção)','Roberto Barroso','Alcione Albanesi','numero_inteiro','kg','Maior',0.2,'Ativa','Safra impactada por estiagem em mar/abr','30/04/2026','TRUE','real_sobre_meta','soma'],
   ].forEach(r => mSh.appendRow(r));
 
   // ── Metas Mensais ─────────────────────────────────────────

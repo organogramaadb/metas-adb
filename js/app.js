@@ -309,8 +309,9 @@ function renderProjTable(kpiId, kpi) {
     const metaVinc = DB.metas.find(m => m.id === p.id_meta);
     const stCls = statusBadgeClass(p.status);
     const prCls = prioBadgeClass(p.prioridade);
-    const editBtn = canEdit
-      ? `<button class="tbl-btn" onclick="openProjModal('${p.id}')">Editar</button>`
+    const actionBtns = canEdit
+      ? `<button class="tbl-btn" onclick="openProjModal('${p.id}')">Editar</button>
+         <button class="tbl-btn-del" onclick="deleteProject('${p.id}')" title="Excluir projeto">🗑️</button>`
       : '';
     rows += `<tr>
       <td>
@@ -328,7 +329,7 @@ function renderProjTable(kpiId, kpi) {
         </div>
       </td>
       <td style="font-size:11px;max-width:200px">${p.proxima_acao || '—'}</td>
-      <td class="tbl-c">${editBtn}</td>
+      <td class="tbl-c" style="white-space:nowrap">${actionBtns}</td>
     </tr>`;
   }
   document.getElementById('proj-tbody').innerHTML = rows;
@@ -592,6 +593,7 @@ function saveKpiEdit() {
 function openProjModal(projId, kpiId) {
   editingProjId = projId || null;
   const kpi = KPIS.find(k => k.id === (kpiId || currentKpiId));
+  const canEdit = isAdmin() || (kpi && kpi.responsavel === SESSION.responsavel);
 
   // Popula select de metas
   const metas = DB.metas.filter(m => m.id_kpi === (kpiId || currentKpiId) && m.ativo);
@@ -629,6 +631,10 @@ function openProjModal(projId, kpiId) {
     document.getElementById('proj-prox-acao').value  = '';
     document.getElementById('proj-obs').value        = '';
   }
+  // Botão Excluir: só aparece ao editar e para quem tem permissão
+  const delBtn = document.getElementById('btn-proj-delete');
+  if (delBtn) delBtn.style.display = (projId && canEdit) ? '' : 'none';
+
   document.getElementById('proj-modal').classList.add('on');
 }
 
@@ -700,6 +706,36 @@ function saveProject() {
     const kpi = KPIS.find(k => k.id === currentKpiId);
     renderProjTable(currentKpiId, kpi);
   }
+}
+
+// ── Excluir Projeto ───────────────────────────────────────────────
+function deleteProject(projId) {
+  const p = DB.projetos.find(x => x.id === projId);
+  if (!p) return;
+  if (!confirm(`Excluir o projeto "${p.nome}"?\n\nEsta ação não pode ser desfeita.`)) return;
+
+  DB.projetos = DB.projetos.filter(x => x.id !== projId);
+
+  if (isLiveMode()) {
+    apiDeleteProject(projId)
+      .then(() => {
+        addLog('DELETE', 'projetos', projId, 'nome', p.nome, 'excluído');
+        DB.logs.filter(l => !l._synced).forEach(l => { l._synced = true; apiAddLog(l).catch(() => {}); });
+      })
+      .catch(err => toast('Erro ao excluir no servidor: ' + err.message, 'err'));
+  }
+
+  toast('🗑️ Projeto excluído.', '');
+  const kpi = KPIS.find(k => k.id === currentKpiId);
+  if (kpi) renderProjTable(currentKpiId, kpi);
+}
+
+// Chamado pelo botão "Excluir Projeto" dentro do modal de edição
+function deleteProjectFromModal() {
+  const projId = document.getElementById('proj-id').value;
+  if (!projId) return;
+  closeModal();           // fecha o modal antes de confirmar para limpar o estado
+  deleteProject(projId);
 }
 
 // ── Breadcrumb ────────────────────────────────────────────────────
