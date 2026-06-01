@@ -286,18 +286,67 @@ async function apiDeleteProject(id) {
 }
 
 // ── apiSaveKpi ────────────────────────────────────────────────
+// O objeto KPI do frontend mistura dados de duas tabelas:
+//   tabela kpis            → nome, area, descricao, nome_completo
+//   tabela kpi_responsaveis → responsaveis (array), diretoria
+// Esta função grava cada campo na tabela correta.
+const AREAS_VALIDAS = ['ADMINISTRATIVOS','EDUCACAO','AREA_PRODUTIVA','INVESTIMENTOS_SOCIAIS','PROGRAMAS_SOCIAIS'];
+
 async function apiSaveKpi(kpi) {
   if (!isLiveMode()) return { ok: true, demo: true };
-  const { id, ...rest } = kpi;
-  const { error } = await _supa
-    .from('kpis')
-    .upsert({ id, ...rest }, { onConflict: 'id' });
-  if (error) throw error;
-  const idx = DB.kpis.findIndex(k => k.id === id);
+
+  // 1. Atualiza a tabela kpis (apenas colunas que existem nela)
+  const dbKpi = {
+    nome:          kpi.nome,
+    descricao:     kpi.descricao || null,
+    nome_completo: (kpi.codigo ? kpi.codigo + ' - ' : '') + kpi.nome,
+  };
+  // area só entra se for um valor válido do enum (evita quebrar o CHECK)
+  if (AREAS_VALIDAS.includes(kpi.area)) dbKpi.area = kpi.area;
+
+  const { error: e1 } = await _supa.from('kpis').update(dbKpi).eq('id', kpi.id);
+  if (e1) throw e1;
+
+  // 2. Sincroniza kpi_responsaveis com a lista de responsáveis editada
+  const novosResp = kpi.responsaveis || [];
+  const diretoria = kpi.diretoria || null;
+
+  const { data: atuais, error: e2 } = await _supa
+    .from('kpi_responsaveis')
+    .select('id, responsavel, ativo')
+    .eq('id_kpi', kpi.id);
+  if (e2) throw e2;
+
+  const atuaisMap = {};
+  (atuais || []).forEach(r => { atuaisMap[r.responsavel] = r; });
+
+  // Desativa responsáveis que saíram da lista
+  for (const r of (atuais || [])) {
+    if (r.ativo && !novosResp.includes(r.responsavel)) {
+      const { error } = await _supa.from('kpi_responsaveis')
+        .update({ ativo: false }).eq('id', r.id);
+      if (error) throw error;
+    }
+  }
+
+  // Insere novos / reativa existentes + atualiza diretoria de todos
+  for (const nome of novosResp) {
+    const existente = atuaisMap[nome];
+    if (existente) {
+      const { error } = await _supa.from('kpi_responsaveis')
+        .update({ ativo: true, diretor: diretoria }).eq('id', existente.id);
+      if (error) throw error;
+    } else {
+      const { error } = await _supa.from('kpi_responsaveis')
+        .insert({ id_kpi: kpi.id, responsavel: nome, diretor: diretoria, ativo: true });
+      if (error) throw error;
+    }
+  }
+
+  // Atualiza cache local (kpi já é referência ao objeto em KPIS)
+  const idx = DB.kpis.findIndex(k => k.id === kpi.id);
   if (idx >= 0) DB.kpis[idx] = { ...DB.kpis[idx], ...kpi };
-  else          DB.kpis.push(kpi);
-  // Mantém KPIS sincronizado
-  const ki = KPIS.findIndex(k => k.id === id);
+  const ki = KPIS.findIndex(k => k.id === kpi.id);
   if (ki >= 0) Object.assign(KPIS[ki], kpi);
   return { ok: true };
 }
