@@ -656,8 +656,14 @@ function saveProject() {
     addLog('UPDATE', 'projetos', p.id, 'status', '', p.status);
     toast('✅ Projeto atualizado!', 'ok');
   } else {
+    const newId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+          const r = Math.random() * 16 | 0;
+          return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
     const newP = {
-      id: uid('p'), id_meta: metaId, id_kpi: kpiId,
+      id: newId, id_meta: metaId, id_kpi: kpiId, _isNew: true,
       nome,
       descricao:           document.getElementById('proj-desc').value,
       responsavel:         document.getElementById('proj-resp').value,

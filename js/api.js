@@ -166,9 +166,21 @@ async function loadData() {
       valor_realizado: r.valor_realizado != null ? parseFloat(r.valor_realizado) : null,
     }));
 
+    // Projetos: mapeia banco → frontend
+    //   observacoes → obs | atualizado_em → data_atualizacao | status/prioridade → rótulos
+    //   id_kpi derivado via id_meta (a tabela projetos só guarda id_meta)
+    const metaToKpi = {};
+    DB.metas.forEach(m => { metaToKpi[m.id] = m.id_kpi; });
+    const ST_DISPLAY = { nao_iniciado:'Não iniciado', em_andamento:'Em andamento', em_atraso:'Em atraso', concluido:'Concluído', suspenso:'Suspenso', cancelado:'Cancelado' };
+    const PR_DISPLAY = { baixa:'Baixa', media:'Média', alta:'Alta', critica:'Crítica' };
     DB.projetos = (projetos || []).map(p => ({
       ...p,
+      id_kpi:              metaToKpi[p.id_meta] || null,
       percentual_evolucao: parseFloat(p.percentual_evolucao) || 0,
+      status:              ST_DISPLAY[p.status] || p.status || 'Não iniciado',
+      prioridade:          PR_DISPLAY[p.prioridade] || p.prioridade || 'Média',
+      obs:                 p.observacoes || '',
+      data_atualizacao:    p.atualizado_em ? new Date(p.atualizado_em).toLocaleDateString('pt-BR') : '',
     }));
 
     DB.logs = logs || [];
@@ -263,14 +275,43 @@ async function apiSaveMetaMensal(payload) {
 }
 
 // ── apiSaveProject ────────────────────────────────────────────
+// Mapeia o objeto frontend para o schema da tabela projetos:
+//   obs → observacoes | rótulos de status/prioridade → enums lowercase
+//   id_kpi/data_*/usuario_* descartados (não existem na tabela)
+const STATUS_PROJ_DB = { 'Não iniciado':'nao_iniciado', 'Em andamento':'em_andamento', 'Em atraso':'em_atraso', 'Concluído':'concluido', 'Suspenso':'suspenso', 'Cancelado':'cancelado' };
+const PRIO_PROJ_DB   = { 'Baixa':'baixa', 'Média':'media', 'Alta':'alta', 'Crítica':'critica' };
+
 async function apiSaveProject(proj) {
   if (!isLiveMode()) return { ok: true, demo: true };
-  const { id, ...rest } = proj;
-  const { error } = await _supa
-    .from('projetos')
-    .upsert({ id, ...rest }, { onConflict: 'id' });
+
+  const dbPayload = {
+    id:                  proj.id,
+    id_meta:             proj.id_meta,
+    nome:                proj.nome || '',
+    descricao:           proj.descricao || '',
+    responsavel:         proj.responsavel || '',
+    status:              STATUS_PROJ_DB[proj.status] || proj.status || 'nao_iniciado',
+    prazo:               proj.prazo || null,
+    percentual_evolucao: parseFloat(proj.percentual_evolucao) || 0,
+    prioridade:          PRIO_PROJ_DB[proj.prioridade] || proj.prioridade || 'media',
+    proxima_acao:        proj.proxima_acao || '',
+    responsavel_acao:    proj.responsavel_acao || '',
+    observacoes:         proj.obs || proj.observacoes || '',
+    ativo:               proj.ativo !== false,
+  };
+
+  // INSERT para novos, UPDATE para existentes (evita problema de RLS no UPSERT)
+  const isNew = !!proj._isNew;
+  let error;
+  if (isNew) {
+    ({ error } = await _supa.from('projetos').insert(dbPayload));
+  } else {
+    ({ error } = await _supa.from('projetos').update(dbPayload).eq('id', dbPayload.id));
+  }
   if (error) throw error;
-  const idx = DB.projetos.findIndex(p => p.id === id);
+
+  delete proj._isNew;  // já persistido — próximos saves serão UPDATE
+  const idx = DB.projetos.findIndex(p => p.id === proj.id);
   if (idx >= 0) DB.projetos[idx] = { ...DB.projetos[idx], ...proj };
   else          DB.projetos.push(proj);
   return { ok: true };
