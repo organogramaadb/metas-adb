@@ -15,60 +15,64 @@ const USUARIOS = [
 ];
 
 // ── KPIs ──────────────────────────────────────────────────────────
+// 'area' usa o código do enum do banco (UPPERCASE) — areaLabel() converte para exibição
+// 'responsaveis' é array: permite múltiplos responsáveis por KPI
 const KPIS = [
-  // ── ADMINISTRAÇÃO ──────────────────────────────────────────────
-  { id:'kpi-101',  codigo:'1.01', nome:'KPI Administração Central',       area:'Administração',         responsavel:'Daniel Benedetti',  diretoria:'Fernando Medeiros', descricao:'Gestão dos custos administrativos centrais', ativo:true },
-  { id:'kpi-102',  codigo:'1.02', nome:'KPI Recursos Humanos',            area:'Administração',         responsavel:'Gisele Carneiro',   diretoria:'Fernando Medeiros', descricao:'Gestão de pessoas, recrutamento e benefícios', ativo:true },
-  { id:'kpi-103',  codigo:'1.03', nome:'KPI Suprimentos',                 area:'Administração',         responsavel:'Roberto Zambeli',   diretoria:'Fernando Medeiros', descricao:'Eficiência do ciclo de compras e fornecedores', ativo:true },
-  { id:'kpi-104',  codigo:'1.04', nome:'KPI Administração Facilities',    area:'Administração',         responsavel:'Roberto Zambeli',   diretoria:'Fernando Medeiros', descricao:'Operação predial e infraestrutura física central', ativo:true },
-  { id:'kpi-105',  codigo:'1.05', nome:'KPI DP',                          area:'Administração',         responsavel:'Vaga',              diretoria:'Fernando Medeiros', descricao:'Processamento de folha e compliance trabalhista', ativo:true },
-  { id:'kpi-106a', codigo:'1.06', nome:'KPI Jurídico e Regulatórios',     area:'Administração',         responsavel:'Daniel Benedetti',  diretoria:'Fernando Medeiros', descricao:'Gestão jurídica e conformidade regulatória', ativo:true },
-  { id:'kpi-106',  codigo:'1.06', nome:'KPI Controladoria',               area:'Administração',         responsavel:'Daniel Benedetti',  diretoria:'Fernando Medeiros', descricao:'Orçamento, forecast, controles internos e BI gerencial', ativo:true },
-  { id:'kpi-107',  codigo:'1.07', nome:'KPI Informática',                 area:'Administração',         responsavel:'Alexandre Carrega', diretoria:'Fernando Medeiros', descricao:'Suporte, infraestrutura e licenças de tecnologia', ativo:true },
-  { id:'kpi-108',  codigo:'1.08', nome:'KPI Marketing',                   area:'Administração',         responsavel:'Daniel Benedetti',  diretoria:'Fernando Medeiros', descricao:'Comunicação institucional e campanhas de marketing', ativo:true },
-  // ── EDUCAÇÃO ───────────────────────────────────────────────────
-  { id:'kpi-201',  codigo:'2.01', nome:'KPI Educação',                    area:'Educação',              responsavel:'Alceu Caldeira',    diretoria:'Alceu Caldeira',    descricao:'Centros de Transformação e programas educacionais', ativo:true },
-  // ── ÁREA PRODUTIVA ─────────────────────────────────────────────
-  { id:'kpi-301',  codigo:'3.01', nome:'KPI Produção',                    area:'Área Produtiva',        responsavel:'Roberto Barroso',   diretoria:'Alcione Albanesi',  descricao:'Produção de amêndoa e controle de custos industriais', ativo:true },
-  { id:'kpi-303',  codigo:'3.03', nome:'KPI Logística',                   area:'Área Produtiva',        responsavel:'Roberto Barroso',   diretoria:'Alcione Albanesi',  descricao:'Gestão da cadeia logística e distribuição', ativo:true },
-  { id:'kpi-308',  codigo:'3.08', nome:'KPI Comercial',                   area:'Área Produtiva',        responsavel:'Roberto Barroso',   diretoria:'Alcione Albanesi',  descricao:'Vendas e relacionamento comercial', ativo:true },
-  { id:'kpi-309a', codigo:'3.09', nome:'KPI Campo — CE',                  area:'Área Produtiva',        responsavel:'Roberto Barroso',   diretoria:'Alcione Albanesi',  descricao:'Operações de campo — Ceará', ativo:true },
-  { id:'kpi-309b', codigo:'3.09', nome:'KPI Campo — Inajá',               area:'Área Produtiva',        responsavel:'Roberto Barroso',   diretoria:'Alcione Albanesi',  descricao:'Operações de campo — Inajá', ativo:true },
-  { id:'kpi-309c', codigo:'3.09', nome:'KPI Campo — CAT',                 area:'Área Produtiva',        responsavel:'Roberto Barroso',   diretoria:'Alcione Albanesi',  descricao:'Operações de campo — CAT', ativo:true },
-  { id:'kpi-310',  codigo:'3.10', nome:'KPI Bazar',                       area:'Área Produtiva',        responsavel:'Roberto Barroso',   diretoria:'Alcione Albanesi',  descricao:'Gestão das lojas bazar', ativo:true },
-  // ── INVESTIMENTOS SOCIAIS ──────────────────────────────────────
-  { id:'kpi-401a', codigo:'4.01', nome:'KPI Obras e Projetos',            area:'Investimentos Sociais', responsavel:'Alceu Caldeira',    diretoria:'André de Luca',     descricao:'Gestão de obras e projetos sociais', ativo:true },
-  { id:'kpi-405',  codigo:'4.05', nome:'KPI Energia',                     area:'Investimentos Sociais', responsavel:'Alceu Caldeira',    diretoria:'André de Luca',     descricao:'Gestão de infraestrutura de energia', ativo:true },
-  { id:'kpi-401b', codigo:'4.01', nome:'KPI Obras e Projetos SD',         area:'Investimentos Sociais', responsavel:'Alceu Caldeira',    diretoria:'André de Luca',     descricao:'Obras e projetos — Sertão do Desenvolvimento', ativo:true },
-  { id:'kpi-403a', codigo:'4.03', nome:'KPI Água',                        area:'Investimentos Sociais', responsavel:'Alceu Caldeira',    diretoria:'André de Luca',     descricao:'Gestão de infraestrutura hídrica', ativo:true },
-  { id:'kpi-403b', codigo:'4.03', nome:'KPI Assistência Social',          area:'Investimentos Sociais', responsavel:'Alceu Caldeira',    diretoria:'André de Luca',     descricao:'Programas de assistência social', ativo:true },
-  { id:'kpi-404',  codigo:'4.04', nome:'KPI Centro de Distribuição',      area:'Investimentos Sociais', responsavel:'Alceu Caldeira',    diretoria:'André de Luca',     descricao:'Operações do centro de distribuição', ativo:true },
-  // ── PROGRAMAS SOCIAIS ──────────────────────────────────────────
-  { id:'kpi-502',  codigo:'5.02', nome:'KPI Unidades',                    area:'Programas Sociais',     responsavel:'Mirlane Sousa',     diretoria:'Alceu Caldeira',    descricao:'Gestão das unidades de atendimento', ativo:true },
-  { id:'kpi-504',  codigo:'5.04', nome:'KPI Saúde',                       area:'Programas Sociais',     responsavel:'Mirlane Sousa',     diretoria:'Alceu Caldeira',    descricao:'Programas e indicadores de saúde', ativo:true },
-  { id:'kpi-505',  codigo:'5.05', nome:'KPI Frota',                       area:'Programas Sociais',     responsavel:'Mirlane Sousa',     diretoria:'Alceu Caldeira',    descricao:'Gestão da frota de veículos', ativo:true },
-  { id:'kpi-507',  codigo:'5.07', nome:'KPI Distribuição',                area:'Programas Sociais',     responsavel:'Mirlane Sousa',     diretoria:'Alceu Caldeira',    descricao:'Logística de distribuição social', ativo:true },
-  { id:'kpi-510',  codigo:'5.10', nome:'KPI Desenv. Institucional — Eventos', area:'Programas Sociais', responsavel:'Mirlane Sousa',     diretoria:'Alceu Caldeira',    descricao:'Eventos institucionais e captação', ativo:true },
-  { id:'kpi-508',  codigo:'5.08', nome:'KPI Desenv. Institucional — PJ', area:'Programas Sociais',     responsavel:'Mirlane Sousa',     diretoria:'Alceu Caldeira',    descricao:'Desenvolvimento institucional pessoa jurídica', ativo:true },
-  { id:'kpi-509',  codigo:'5.09', nome:'KPI Desenv. Institucional — PF', area:'Programas Sociais',     responsavel:'Mirlane Sousa',     diretoria:'Alceu Caldeira',    descricao:'Desenvolvimento institucional pessoa física', ativo:true },
-  { id:'kpi-511',  codigo:'5.11', nome:'KPI Central de Doação',           area:'Programas Sociais',     responsavel:'Mirlane Sousa',     diretoria:'Alceu Caldeira',    descricao:'Gestão da central de doações', ativo:true },
+  // ── ADMINISTRATIVOS ────────────────────────────────────────────
+  { id:'kpi-101', codigo:'1.01', nome:'KPI ADMINISTRACAO CENTRAL',       area:'ADMINISTRATIVOS',       responsaveis:['Daniel Benedetti'],   diretoria:'Fernando Medeiros', descricao:'Gestão dos custos administrativos centrais', ativo:true },
+  { id:'kpi-102', codigo:'1.02', nome:'KPI RECURSOS HUMANOS',            area:'ADMINISTRATIVOS',       responsaveis:['Gisele Carneiro'],    diretoria:'Fernando Medeiros', descricao:'Gestão de pessoas, recrutamento e benefícios', ativo:true },
+  { id:'kpi-103', codigo:'1.03', nome:'KPI SUPRIMENTOS',                 area:'ADMINISTRATIVOS',       responsaveis:['Roberto Zambeli'],    diretoria:'Fernando Medeiros', descricao:'Eficiência do ciclo de compras e fornecedores', ativo:true },
+  { id:'kpi-104', codigo:'1.04', nome:'KPI ADMINISTRACAO FACILITIES',    area:'ADMINISTRATIVOS',       responsaveis:['Roberto Zambeli'],    diretoria:'Fernando Medeiros', descricao:'Operação predial e infraestrutura física central', ativo:true },
+  { id:'kpi-105', codigo:'1.05', nome:'KPI DP',                          area:'ADMINISTRATIVOS',       responsaveis:[],                     diretoria:'Fernando Medeiros', descricao:'Processamento de folha e compliance trabalhista', ativo:true },
+  { id:'kpi-106', codigo:'1.06', nome:'KPI CONTROLADORIA',               area:'ADMINISTRATIVOS',       responsaveis:['Daniel Benedetti'],   diretoria:'Fernando Medeiros', descricao:'Orçamento, forecast, controles internos e BI gerencial', ativo:true },
+  { id:'kpi-107', codigo:'1.07', nome:'KPI INFORMATICA',                 area:'ADMINISTRATIVOS',       responsaveis:['Alexandre Carrega'],  diretoria:'Fernando Medeiros', descricao:'Suporte, infraestrutura e licenças de tecnologia', ativo:true },
+  { id:'kpi-108', codigo:'1.08', nome:'KPI MARKETING',                   area:'ADMINISTRATIVOS',       responsaveis:['Thays Aiala'],        diretoria:'Fernando Medeiros', descricao:'Comunicação institucional e campanhas de marketing', ativo:true },
+  { id:'kpi-109', codigo:'1.09', nome:'KPI JURIDICO E REGULATORIOS',     area:'ADMINISTRATIVOS',       responsaveis:['Ubiratan Reis'],      diretoria:'Fernando Medeiros', descricao:'Gestão jurídica e conformidade regulatória', ativo:true },
+  // ── EDUCACAO ───────────────────────────────────────────────────
+  { id:'kpi-201', codigo:'2.01', nome:'KPI EDUCACAO',                    area:'EDUCACAO',              responsaveis:['Alceu Caldeira'],     diretoria:'Alceu Caldeira',   descricao:'Centros de Transformação e programas educacionais', ativo:true },
+  // ── AREA_PRODUTIVA ─────────────────────────────────────────────
+  { id:'kpi-301', codigo:'3.01', nome:'KPI PRODUCAO',                    area:'AREA_PRODUTIVA',        responsaveis:['Roberto Barroso'],    diretoria:'Alcione Albanesi', descricao:'Produção de amêndoa e controle de custos industriais', ativo:true },
+  { id:'kpi-303', codigo:'3.03', nome:'KPI LOGISTICA',                   area:'AREA_PRODUTIVA',        responsaveis:['Edmilson Lima'],      diretoria:'Alcione Albanesi', descricao:'Gestão da cadeia logística e distribuição', ativo:true },
+  { id:'kpi-304', codigo:'3.04', nome:'KPI ADMINISTRACAO PRODUTIVO',     area:'AREA_PRODUTIVA',        responsaveis:[],                     diretoria:'Alcione Albanesi', descricao:'A definir', ativo:true },
+  { id:'kpi-308', codigo:'3.08', nome:'KPI COMERCIAL',                   area:'AREA_PRODUTIVA',        responsaveis:['Fernando Sanches'],   diretoria:'Alcione Albanesi', descricao:'Vendas e relacionamento comercial', ativo:true },
+  { id:'kpi-309-cat', codigo:'3.09', nome:'KPI CAMPO CAT',   area:'AREA_PRODUTIVA', responsaveis:['Paulo Souza'],    diretoria:'Alcione Albanesi', descricao:'Operações de campo — Catimbau (CC 65)', ativo:true },
+  { id:'kpi-311',     codigo:'3.11', nome:'KPI CAMPO CE',   area:'AREA_PRODUTIVA', responsaveis:['Aurora Dionisio'],diretoria:'Alcione Albanesi', descricao:'Operações de campo — Ceará (CC 66)', ativo:true },
+  { id:'kpi-312',     codigo:'3.12', nome:'KPI CAMPO INAJA',area:'AREA_PRODUTIVA', responsaveis:['Diogo Siqueira'], diretoria:'Alcione Albanesi', descricao:'Operações de campo — Inajá (CC 265)', ativo:true },
+  { id:'kpi-310', codigo:'3.10', nome:'KPI BAZAR',                       area:'AREA_PRODUTIVA',        responsaveis:['Alexandre Lacorte'],  diretoria:'Alcione Albanesi', descricao:'Gestão das lojas bazar', ativo:true },
+  // ── INVESTIMENTOS_SOCIAIS ──────────────────────────────────────
+  { id:'kpi-401',  codigo:'4.01', nome:'KPI OBRAS E PROJETOS',           area:'INVESTIMENTOS_SOCIAIS', responsaveis:['Roberto Barroso','Sergio Tamassia'], diretoria:'André de Luca', descricao:'Gestão de obras e projetos sociais', ativo:true },
+  { id:'kpi-402',  codigo:'4.02', nome:'KPI OBRAS E PROJETOS SD',        area:'INVESTIMENTOS_SOCIAIS', responsaveis:['Roberto Barroso'],    diretoria:'André de Luca',    descricao:'Obras e projetos — Sertão do Desenvolvimento (CC 279)', ativo:true },
+  { id:'kpi-405',  codigo:'4.05', nome:'KPI ENERGIA',                   area:'INVESTIMENTOS_SOCIAIS', responsaveis:['Sergio Tamassia'],    diretoria:'André de Luca',    descricao:'Projetos de energia solar (CCs 217, 218, 230, 293)', ativo:true },
+  { id:'kpi-403',  codigo:'4.03', nome:'KPI ASSISTENCIA SOCIAL',         area:'INVESTIMENTOS_SOCIAIS', responsaveis:['Aurora Dionisio','Diogo Siqueira','Mauriceia Rodrigues','Paulo Souza'], diretoria:'André de Luca', descricao:'Programas de assistência social', ativo:true },
+  { id:'kpi-403a', codigo:'4.03', nome:'KPI AGUA',                       area:'INVESTIMENTOS_SOCIAIS', responsaveis:['Sergio Tamassia'],    diretoria:'André de Luca',    descricao:'Gestão de infraestrutura hídrica', ativo:true },
+  { id:'kpi-404',  codigo:'4.04', nome:'KPI CENTRO DE DISTRIBUICAO',     area:'INVESTIMENTOS_SOCIAIS', responsaveis:['Reginaldo Queiroz'],  diretoria:'André de Luca',    descricao:'Operações do centro de distribuição', ativo:true },
+  // ── PROGRAMAS_SOCIAIS ──────────────────────────────────────────
+  { id:'kpi-501', codigo:'5.01', nome:'KPI ADMINISTRACAO SERTAO',        area:'PROGRAMAS_SOCIAIS',     responsaveis:[],                     diretoria:'Alceu Caldeira',   descricao:'A definir', ativo:true },
+  { id:'kpi-502', codigo:'5.02', nome:'KPI UNIDADES',                    area:'PROGRAMAS_SOCIAIS',     responsaveis:['Aurora Dionisio','Daniel Benedetti','Diogo Siqueira','Kathia Cruz','Mauriceia Rodrigues','Paulo Souza'], diretoria:'Alceu Caldeira', descricao:'Gestão das unidades de atendimento', ativo:true },
+  { id:'kpi-504', codigo:'5.04', nome:'KPI SAUDE',                       area:'PROGRAMAS_SOCIAIS',     responsaveis:['Maria Gonçalves'],    diretoria:'Alceu Caldeira',   descricao:'Programas e indicadores de saúde', ativo:true },
+  { id:'kpi-505', codigo:'5.05', nome:'KPI FROTA',                       area:'PROGRAMAS_SOCIAIS',     responsaveis:['Roberto Zambeli'],    diretoria:'Alceu Caldeira',   descricao:'Gestão da frota de veículos', ativo:true },
+  { id:'kpi-507', codigo:'5.07', nome:'KPI DISTRIBUICAO',                area:'PROGRAMAS_SOCIAIS',     responsaveis:['Kathia Cruz','Mirlane Sousa'], diretoria:'Alceu Caldeira', descricao:'Logística de distribuição social', ativo:true },
+  { id:'kpi-508', codigo:'5.08', nome:'KPI DESENVOLVIMENTO INSTITUCIONAL', area:'PROGRAMAS_SOCIAIS',   responsaveis:['Alceu Caldeira','Fernando Sanches','Filipe Dorneles'], diretoria:'Alceu Caldeira', descricao:'Desenvolvimento institucional', ativo:true },
+  { id:'kpi-510', codigo:'5.10', nome:'KPI CENTRAL DE DOACAO',           area:'PROGRAMAS_SOCIAIS',     responsaveis:['Alexandre Lacorte'],  diretoria:'Alceu Caldeira',   descricao:'Gestão da central de doações', ativo:true },
+  { id:'kpi-511', codigo:'5.11', nome:'KPI DI EVENTOS',                area:'PROGRAMAS_SOCIAIS',     responsaveis:['Alceu Caldeira'],     diretoria:'Alceu Caldeira',   descricao:'Desenvolvimento Institucional — Eventos (CCs 96, 99)', ativo:true },
+  { id:'kpi-512', codigo:'5.12', nome:'KPI ASSISTENCIA SOCIAL',          area:'PROGRAMAS_SOCIAIS',     responsaveis:['Aurora Dionisio','Diogo Siqueira','Mauriceia Rodrigues','Paulo Souza'], diretoria:'André de Luca', descricao:'Projetos sociais e assistência (CCs 67, 164, 267, 268)', ativo:true },
 ];
 
 // ── Metas ─────────────────────────────────────────────────────────
 // Chave: id_kpi + responsavel (conforme regra de governança)
 const METAS = [
   // KPI 1.01 — Administração Central
-  { id:'m-101-1', id_kpi:'kpi-101', codigo_kpi:'1.01', seq:1, nome:'Controle de Despesas Adm.', descricao:'Manter despesas administrativas centrais dentro do orçamento aprovado', responsavel:'Daniel Benedetti', diretoria:'Fernando Medeiros', tipo_formato:'moeda', unidade_medida:'R$', bom_quando:'Menor', formula_atingimento:'real_sobre_meta', tipo_acumulado:'soma',  peso:0.6, status:'Ativa', obs:'', ult_at:'26/05/2026', ativo:true },
-  { id:'m-101-2', id_kpi:'kpi-101', codigo_kpi:'1.01', seq:2, nome:'Índice de Satisfação Interna', descricao:'Pesquisa de satisfação com serviços administrativos (NPS interno)', responsavel:'Daniel Benedetti', diretoria:'Fernando Medeiros', tipo_formato:'decimal', unidade_medida:'pontos', bom_quando:'Maior', formula_atingimento:'real_sobre_meta', tipo_acumulado:'media', peso:0.4, status:'Ativa', obs:'', ult_at:'15/03/2026', ativo:true },
+  { id:'m-101-1', id_kpi:'kpi-101', codigo_kpi:'1.01', seq:1, nome:'Controle de Despesas Adm.', descricao:'Manter despesas administrativas centrais dentro do orçamento aprovado', responsavel:'Daniel Benedetti', diretoria:'Fernando Medeiros', tipo_formato:'monetario', unidade_medida:'R$', bom_quando:'menor', formula_atingimento:'real_sobre_meta', tipo_acumulado:'soma',  peso:0.6, status:'Ativa', obs:'', ult_at:'26/05/2026', ativo:true },
+  { id:'m-101-2', id_kpi:'kpi-101', codigo_kpi:'1.01', seq:2, nome:'Índice de Satisfação Interna', descricao:'Pesquisa de satisfação com serviços administrativos (NPS interno)', responsavel:'Daniel Benedetti', diretoria:'Fernando Medeiros', tipo_formato:'decimal', unidade_medida:'pontos', bom_quando:'maior', formula_atingimento:'real_sobre_meta', tipo_acumulado:'media', peso:0.4, status:'Ativa', obs:'', ult_at:'15/03/2026', ativo:true },
 
   // KPI 1.02 — Recursos Humanos
-  { id:'m-102-1', id_kpi:'kpi-102', codigo_kpi:'1.02', seq:1, nome:'Taxa de Turnover', descricao:'Percentual de saídas voluntárias em relação ao quadro total', responsavel:'Gisele Carneiro', diretoria:'Fernando Medeiros', tipo_formato:'percentual', unidade_medida:'%', bom_quando:'Menor', formula_atingimento:'real_sobre_meta', tipo_acumulado:'media', peso:0.4, status:'Ativa', obs:'', ult_at:'30/04/2026', ativo:true },
-  { id:'m-102-2', id_kpi:'kpi-102', codigo_kpi:'1.02', seq:2, nome:'Posições Preenchidas', descricao:'Percentual de vagas preenchidas em relação ao headcount aprovado', responsavel:'Gisele Carneiro', diretoria:'Fernando Medeiros', tipo_formato:'percentual', unidade_medida:'%', bom_quando:'Maior', formula_atingimento:'real_sobre_meta', tipo_acumulado:'media', peso:0.6, status:'Ativa', obs:'Vagas de campo apresentam maior dificuldade de preenchimento', ult_at:'30/04/2026', ativo:true },
+  { id:'m-102-1', id_kpi:'kpi-102', codigo_kpi:'1.02', seq:1, nome:'Taxa de Turnover', descricao:'Percentual de saídas voluntárias em relação ao quadro total', responsavel:'Gisele Carneiro', diretoria:'Fernando Medeiros', tipo_formato:'percentual', unidade_medida:'%', bom_quando:'menor', formula_atingimento:'real_sobre_meta', tipo_acumulado:'media', peso:0.4, status:'Ativa', obs:'', ult_at:'30/04/2026', ativo:true },
+  { id:'m-102-2', id_kpi:'kpi-102', codigo_kpi:'1.02', seq:2, nome:'Posições Preenchidas', descricao:'Percentual de vagas preenchidas em relação ao headcount aprovado', responsavel:'Gisele Carneiro', diretoria:'Fernando Medeiros', tipo_formato:'percentual', unidade_medida:'%', bom_quando:'maior', formula_atingimento:'real_sobre_meta', tipo_acumulado:'media', peso:0.6, status:'Ativa', obs:'Vagas de campo apresentam maior dificuldade de preenchimento', ult_at:'30/04/2026', ativo:true },
 
   // KPI 3.01 — Produção (baseado em Modelo METAS CLAUDE.xlsx)
-  { id:'m-301-1', id_kpi:'kpi-301', codigo_kpi:'3.01', seq:1, nome:'Despesas de Produção', descricao:'Controle total de despesas operacionais da unidade produtiva de amêndoa', responsavel:'Roberto Barroso', diretoria:'Alcione Albanesi', tipo_formato:'moeda', unidade_medida:'R$', bom_quando:'Menor', formula_atingimento:'real_sobre_meta', tipo_acumulado:'soma',  peso:0.5, status:'Ativa', obs:'Impacto da alta do diesel e insumos no Q1', ult_at:'30/04/2026', ativo:true },
-  { id:'m-301-2', id_kpi:'kpi-301', codigo_kpi:'3.01', seq:2, nome:'Custo Base Amêndoa', descricao:'Custo unitário médio da base amêndoa (produção própria + compra)', responsavel:'Roberto Barroso', diretoria:'Alcione Albanesi', tipo_formato:'decimal', unidade_medida:'R$/kg', bom_quando:'Menor', formula_atingimento:'real_sobre_meta', tipo_acumulado:'media', peso:0.3, status:'Ativa', obs:'', ult_at:'30/04/2026', ativo:true },
-  { id:'m-301-3', id_kpi:'kpi-301', codigo_kpi:'3.01', seq:3, nome:'Produção Total', descricao:'Volume total de amêndoa produzida no período (meta de produção)', responsavel:'Roberto Barroso', diretoria:'Alcione Albanesi', tipo_formato:'numero_inteiro', unidade_medida:'kg', bom_quando:'Maior', formula_atingimento:'real_sobre_meta', tipo_acumulado:'soma',  peso:0.2, status:'Ativa', obs:'Safra impactada por estiagem em mar/abr', ult_at:'30/04/2026', ativo:true },
+  { id:'m-301-1', id_kpi:'kpi-301', codigo_kpi:'3.01', seq:1, nome:'Despesas de Produção', descricao:'Controle total de despesas operacionais da unidade produtiva de amêndoa', responsavel:'Roberto Barroso', diretoria:'Alcione Albanesi', tipo_formato:'monetario', unidade_medida:'R$', bom_quando:'menor', formula_atingimento:'real_sobre_meta', tipo_acumulado:'soma',  peso:0.5, status:'Ativa', obs:'Impacto da alta do diesel e insumos no Q1', ult_at:'30/04/2026', ativo:true },
+  { id:'m-301-2', id_kpi:'kpi-301', codigo_kpi:'3.01', seq:2, nome:'Custo Base Amêndoa', descricao:'Custo unitário médio da base amêndoa (produção própria + compra)', responsavel:'Roberto Barroso', diretoria:'Alcione Albanesi', tipo_formato:'decimal', unidade_medida:'R$/kg', bom_quando:'menor', formula_atingimento:'real_sobre_meta', tipo_acumulado:'media', peso:0.3, status:'Ativa', obs:'', ult_at:'30/04/2026', ativo:true },
+  { id:'m-301-3', id_kpi:'kpi-301', codigo_kpi:'3.01', seq:3, nome:'Produção Total', descricao:'Volume total de amêndoa produzida no período (meta de produção)', responsavel:'Roberto Barroso', diretoria:'Alcione Albanesi', tipo_formato:'inteiro', unidade_medida:'kg', bom_quando:'maior', formula_atingimento:'real_sobre_meta', tipo_acumulado:'soma',  peso:0.2, status:'Ativa', obs:'Safra impactada por estiagem em mar/abr', ult_at:'30/04/2026', ativo:true },
 ];
 
 // ── Metas Mensais ─────────────────────────────────────────────────
@@ -191,8 +195,11 @@ const LOGS = [
 ];
 
 // ── Estado mútavel (in-memory durante a sessão) ───────────────────
-// Cópias deep para permitir edição sem alterar os originais
+// Em modo demo os arrays são populados com os dados acima.
+// Em modo live (Supabase) api.js substitui o conteúdo após login.
 let DB = {
+  usuario:      null,
+  kpis:         [],
   metas:        JSON.parse(JSON.stringify(METAS)),
   metasMensais: JSON.parse(JSON.stringify(METAS_MENSAIS)),
   projetos:     JSON.parse(JSON.stringify(PROJETOS)),

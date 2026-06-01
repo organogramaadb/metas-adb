@@ -14,6 +14,25 @@ function login(email, senha) {
 
 function logout() { SESSION = null; }
 
+// ── Mapeamento de área para exibição ─────────────────────────────────
+const AREA_LABELS = {
+  'ADMINISTRATIVOS':       'Administração',
+  'EDUCACAO':              'Educação',
+  'AREA_PRODUTIVA':        'Área Produtiva',
+  'INVESTIMENTOS_SOCIAIS': 'Investimentos Sociais',
+  'PROGRAMAS_SOCIAIS':     'Programas Sociais',
+};
+
+function areaLabel(area) {
+  return AREA_LABELS[area] || area;
+}
+
+// Exibe responsáveis do KPI; retorna 'A definir' para KPIs sem responsável definido
+function kpiResps(kpi) {
+  const arr = kpi.responsaveis || [];
+  return arr.length ? arr.join(', ') : 'A definir';
+}
+
 // ── Permissões ────────────────────────────────────────────────────
 function isAdmin()      { return SESSION && (SESSION.perfil === 'Admin'); }
 function isDiretorN1()  { return SESSION && (SESSION.perfil === 'DiretorN1'); }
@@ -22,8 +41,8 @@ function canSeeAll()    { return isAdmin() || isDiretorN1(); }
 function canSeeKPI(kpi) {
   if (!SESSION) return false;
   if (canSeeAll()) return true;
-  // Responsável vê KPIs onde seu nome está como responsável
-  return kpi.responsavel === SESSION.responsavel;
+  // Responsável vê KPIs onde seu nome aparece no array responsaveis
+  return (kpi.responsaveis || []).includes(SESSION.responsavel);
 }
 
 function canEditMeta(meta) {
@@ -50,12 +69,14 @@ function fmt(valor, tipo) {
   const n = parseFloat(valor);
   if (isNaN(n)) return String(valor);
   switch (tipo) {
+    case 'monetario':
     case 'moeda':
       return 'R$ ' + Math.abs(n).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
     case 'percentual':
       return (n * 100).toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 }) + '%';
     case 'decimal':
       return n.toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+    case 'inteiro':
     case 'numero_inteiro':
       return Math.round(n).toLocaleString('pt-BR');
     default:
@@ -150,7 +171,7 @@ function calcMeta(meta, ano) {
 
   if (metaAc !== 0 && realAc !== 0) {
     atingimento = formula === 'real_sobre_meta' ? realAc / metaAc : metaAc / realAc;
-    scoringAt   = meta.bom_quando === 'Maior'   ? realAc / metaAc : metaAc / realAc;
+    scoringAt   = meta.bom_quando === 'maior'   ? realAc / metaAc : metaAc / realAc;
   } else if (metaAc === 0 && realAc === 0) {
     atingimento = 1;
     scoringAt   = 1;

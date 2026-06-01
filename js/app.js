@@ -18,40 +18,19 @@ function toast(msg, tipo = '') {
   toastTimer = setTimeout(() => { el.className = ''; }, 3200);
 }
 
-// ── Login ─────────────────────────────────────────────────────────
-function fillDemo(email, pwd) {
-  document.getElementById('inp-email').value = email;
-  document.getElementById('inp-pwd').value = pwd;
-}
-
-function doLogin(e) {
-  e.preventDefault();
-  const email = document.getElementById('inp-email').value.trim();
-  const pwd   = document.getElementById('inp-pwd').value;
-  const u = login(email, pwd);
-  if (!u) {
-    const err = document.getElementById('lerr');
-    err.style.display = 'block';
-    setTimeout(() => { err.style.display = 'none'; }, 3000);
-    return;
-  }
+// ── initApp — chamado por api.js após login bem-sucedido ──────────
+function initApp() {
+  const u = DB.usuario;
   document.getElementById('lo').style.display = 'none';
   document.getElementById('app').classList.add('on');
-  // Preenche header
   const img = document.getElementById('hdr-logo');
   img.src = LOGO_B64;
   document.getElementById('hdr-uname').textContent = u.nome;
-  document.getElementById('hdr-urole').textContent = u.perfil === 'Admin' ? 'Administrador' : u.perfil === 'DiretorN1' ? 'Diretoria N1' : 'Responsável';
+  const roleLabels = { 'Admin': 'Administrador', 'DiretorN1': 'Diretoria N1', 'Responsavel': 'Responsável' };
+  document.getElementById('hdr-urole').textContent = roleLabels[u.perfil] || 'Responsável';
   document.getElementById('hdr-avatar').textContent = u.nome.charAt(0).toUpperCase();
   renderNav();
   showIndex();
-}
-
-function doLogout() {
-  logout();
-  document.getElementById('app').classList.remove('on');
-  document.getElementById('lo').style.display = 'flex';
-  document.getElementById('inp-pwd').value = '';
 }
 
 // ── Navegação ─────────────────────────────────────────────────────
@@ -68,7 +47,7 @@ function renderNav() {
     const isOpen = true;
     html += `<div class="nav-area${isOpen?' open':''}">
       <div class="nav-area-hd" onclick="toggleArea(this)">
-        <span>${area}</span><span class="nav-area-arrow">▶</span>
+        <span>${areaLabel(area)}</span><span class="nav-area-arrow">▶</span>
       </div>
       <div class="nav-area-cnt">`;
     for (const k of list) {
@@ -117,7 +96,7 @@ function showIndex() {
   let html = '';
   for (const [area, list] of Object.entries(areas)) {
     html += `<div class="index-area">
-      <div class="index-area-title">${area}</div>
+      <div class="index-area-title">${areaLabel(area)}</div>
       <div class="kpi-cards-grid">`;
     for (const k of list) {
       const { totalPontuacao, ultimoMes } = calcKPI(k.id, ANO_ATUAL);
@@ -129,7 +108,7 @@ function showIndex() {
         <div class="kic-code">${k.codigo}</div>
         <div class="kic-name">${k.nome}</div>
         <div class="kic-info">
-          <div class="kic-resp">Resp.: <strong>${k.responsavel}</strong></div>
+          <div class="kic-resp">Resp.: <strong>${kpiResps(k)}</strong></div>
           <div>${k.diretoria}</div>
         </div>
         <div class="kic-score">
@@ -161,9 +140,9 @@ function showKPI(kpiId) {
   // Cabeçalho
   document.getElementById('kpi-code-hd').textContent = kpi.codigo;
   document.getElementById('kpi-name-hd').textContent = kpi.nome;
-  document.getElementById('kpi-resp-hd').textContent = kpi.responsavel;
+  document.getElementById('kpi-resp-hd').textContent = kpiResps(kpi);
   document.getElementById('kpi-dir-hd').textContent  = kpi.diretoria;
-  document.getElementById('kpi-area-hd').textContent = kpi.area;
+  document.getElementById('kpi-area-hd').textContent = areaLabel(kpi.area);
   document.getElementById('btn-edit-kpi').style.display = isAdmin() ? '' : 'none';
 
   const { totalPontuacao, resultados, ultimoMes } = calcKPI(kpiId, ANO_ATUAL);
@@ -207,7 +186,7 @@ function renderCards(totalPontuacao, resultados, ultimoMes) {
       <div class="cm-bar"><div class="cm-bar-fill ${cls2}" style="width:${barW2}%"></div></div>
       <div class="cm-foot">
         <span>Peso: ${(r.meta.peso * 100).toFixed(0)}%</span>
-        <span>${r.meta.bom_quando === 'Maior' ? '↑ Maior' : '↓ Menor'}</span>
+        <span>${r.meta.bom_quando === 'maior' ? '↑ Maior' : '↓ Menor'}</span>
       </div>
       <div class="cm-pts">Pts: ${pts}</div>
     </div>`;
@@ -220,7 +199,7 @@ function renderCards(totalPontuacao, resultados, ultimoMes) {
 
 // ── Tabela de Metas ───────────────────────────────────────────────
 function renderMetasTable(resultados, kpi) {
-  const canEdit = isAdmin() || kpi.responsavel === SESSION.responsavel;
+  const canEdit = isAdmin() || (kpi.responsaveis||[]).includes(SESSION.responsavel);
 
   // Botões de seção
   document.getElementById('sec-btns-metas').innerHTML = canEdit
@@ -242,7 +221,7 @@ function renderMetasTable(resultados, kpi) {
     const metaFmt = r.metaAc !== null ? fmt(r.metaAc, m.tipo_formato) : '—';
     const realFmt = r.realAc !== null ? fmt(r.realAc, m.tipo_formato) : '—';
     const pts = (r.pontuacao * 100).toFixed(1) + '%';
-    const bomHtml = m.bom_quando === 'Maior'
+    const bomHtml = m.bom_quando === 'maior'
       ? `<span class="bom-badge bom-maior">↑ Maior</span>`
       : `<span class="bom-badge bom-menor">↓ Menor</span>`;
 
@@ -292,7 +271,7 @@ function renderMetasTable(resultados, kpi) {
 
 // ── Tabela de Projetos ────────────────────────────────────────────
 function renderProjTable(kpiId, kpi) {
-  const canEdit = isAdmin() || kpi.responsavel === SESSION.responsavel;
+  const canEdit = isAdmin() || (kpi.responsaveis||[]).includes(SESSION.responsavel);
   document.getElementById('sec-btns-proj').innerHTML = canEdit
     ? `<button class="sec-btn primary" onclick="openProjModal(null,'${kpiId}')">+ Novo Projeto</button>`
     : '';
@@ -346,12 +325,18 @@ function openDrawer(metaId, kpiId) {
     if (!kpi) return;
     const existingSeqs = DB.metas.filter(m => m.id_kpi === kpiId).map(m => m.seq);
     const nextSeq = existingSeqs.length ? Math.max(...existingSeqs) + 1 : 1;
-    const newId = 'm-' + Date.now().toString(36);
+    // Gera UUID válido para o banco (crypto.randomUUID disponível em browsers modernos)
+    const newId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+          const r = Math.random() * 16 | 0;
+          return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
     meta = {
-      id: newId, id_kpi: kpiId, codigo_kpi: kpi.codigo, seq: nextSeq,
-      nome: '', descricao: '', responsavel: kpi.responsavel || '',
+      id: newId, id_kpi: kpiId, seq: nextSeq,
+      nome: '', descricao: '', responsavel: (kpi.responsaveis||[])[0] || '',
       diretoria: kpi.diretoria || '', tipo_formato: 'percentual',
-      unidade_medida: '%', bom_quando: 'Maior', peso: 0.5,
+      unidade_medida: '%', bom_quando: 'maior', peso: 0.5,
       formula_atingimento: 'real_sobre_meta', tipo_acumulado: 'soma',
       status: 'Ativa', obs: '', ult_at: new Date().toLocaleDateString('pt-BR'), ativo: true,
       _isNew: true
@@ -546,7 +531,7 @@ function openKpiEdit() {
   const kpi = KPIS.find(k => k.id === currentKpiId);
   if (!kpi) return;
   document.getElementById('kpi-edit-nome').value = kpi.nome;
-  document.getElementById('kpi-edit-resp').value = kpi.responsavel;
+  document.getElementById('kpi-edit-resp').value = kpiResps(kpi);
   document.getElementById('kpi-edit-dir').value  = kpi.diretoria;
   document.getElementById('kpi-edit-area').value = kpi.area;
   document.getElementById('kpi-edit-modal').classList.add('on');
@@ -570,7 +555,7 @@ function saveKpiEdit() {
 
   // Atualiza em memória
   kpi.nome         = nome;
-  kpi.responsavel  = resp;
+  kpi.responsaveis = resp ? resp.split(',').map(s => s.trim()).filter(Boolean) : [];
   kpi.diretoria    = dir;
   kpi.area         = area;
 
@@ -593,7 +578,7 @@ function saveKpiEdit() {
 function openProjModal(projId, kpiId) {
   editingProjId = projId || null;
   const kpi = KPIS.find(k => k.id === (kpiId || currentKpiId));
-  const canEdit = isAdmin() || (kpi && kpi.responsavel === SESSION.responsavel);
+  const canEdit = isAdmin() || (kpi && (kpi.responsaveis||[]).includes(SESSION.responsavel));
 
   // Popula select de metas
   const metas = DB.metas.filter(m => m.id_kpi === (kpiId || currentKpiId) && m.ativo);
@@ -622,7 +607,7 @@ function openProjModal(projId, kpiId) {
     document.getElementById('proj-id').value    = '';
     document.getElementById('proj-nome').value  = '';
     document.getElementById('proj-desc').value  = '';
-    document.getElementById('proj-resp').value  = kpi ? kpi.responsavel : SESSION.nome;
+    document.getElementById('proj-resp').value  = kpi ? kpiResps(kpi) : SESSION.nome;
     document.getElementById('proj-status').value = 'Não iniciado';
     document.getElementById('proj-prio').value  = 'Média';
     document.getElementById('proj-prazo').value = '';
@@ -752,15 +737,30 @@ function setBreadcrumb(items) {
 
 // ── Inicialização ─────────────────────────────────────────────────
 (async function init() {
-  // Logo na tela de login
   const logoEl = document.getElementById('logo-img');
   if (logoEl) logoEl.src = LOGO_B64;
   document.getElementById('app').classList.remove('on');
 
-  // Tenta carregar dados do servidor (se GAS_URL configurado)
+  // Em modo live, tenta restaurar sessão Supabase existente (ex.: após F5)
   if (isLiveMode()) {
-    await apiInit();
-    const badge = document.getElementById('mode-badge');
-    if (badge) { badge.textContent = 'LIVE'; badge.classList.add('live'); }
+    try {
+      const { data: { session } } = await _supa.auth.getSession();
+      if (session) {
+        const { data: perfil } = await _supa
+          .from('usuarios')
+          .select('nome, perfil, responsavel, ativo')
+          .eq('email', session.user.email)
+          .single();
+        if (perfil && perfil.ativo) {
+          const perfilMapped = { 'Admin': 'Admin', 'Gestor': 'Responsavel', 'Consulta': 'DiretorN1' }[perfil.perfil] || perfil.perfil;
+          DB.usuario = { email: session.user.email, nome: perfil.nome, perfil: perfilMapped, responsavel: perfil.responsavel, ativo: true };
+          SESSION = DB.usuario;
+          await loadData();
+          initApp();
+        }
+      }
+    } catch (e) {
+      console.warn('Falha ao restaurar sessão:', e);
+    }
   }
 })();

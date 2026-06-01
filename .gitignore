@@ -1,0 +1,11 @@
+# Arquivos temporários de desenvolvimento
+*.pkl
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Configs locais do Claude (não versionar)
+.claude/settings.local.json
+
+# Logs
+*.log

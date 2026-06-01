@@ -34,11 +34,11 @@
       <div class="lerr" id="lerr">E-mail ou senha incorretos.</div>
     </form>
     <div class="ldem">
-      <p>Acesso de demonstração</p>
-      <button class="dbt" onclick="fillDemo('admin@amigosdobem.org.br','admin')">🔑 Administrador — acesso total</button>
-      <button class="dbt" onclick="fillDemo('daniel.benedetti@amigosdobem.org.br','admin')">👤 Daniel Benedetti — KPIs 1.01 e 1.06</button>
-      <button class="dbt" onclick="fillDemo('roberto.barroso@amigosdobem.org.br','admin')">👤 Roberto Barroso — KPI 3.01</button>
-      <button class="dbt" onclick="fillDemo('gisele.carneiro@amigosdobem.org.br','admin')">👤 Gisele Carneiro — KPI 1.02</button>
+      <p>Acesso rápido</p>
+      <button class="dbt" onclick="fillDemo('admin@amigosdobem.org','sertao@123')">Administrador — acesso total</button>
+      <button class="dbt" onclick="fillDemo('daniel.benedetti@amigosdobem.org','sertao@123')">Daniel Benedetti — KPIs 1.01 e 1.06</button>
+      <button class="dbt" onclick="fillDemo('roberto.barroso@amigosdobem.org','sertao@123')">Roberto Barroso — KPIs 3.01 e 4.01</button>
+      <button class="dbt" onclick="fillDemo('gisele.carneiro@amigosdobem.org','sertao@123')">Gisele Carneiro — KPI 1.02</button>
     </div>
   </div>
 </div>
@@ -254,16 +254,16 @@
         <div class="fr">
           <div class="fi"><label>Tipo de Formato</label>
             <select id="drw-formato" class="dirty">
-              <option value="numero_inteiro">Número Inteiro</option>
+              <option value="inteiro">Número Inteiro</option>
               <option value="percentual">Percentual</option>
-              <option value="moeda">Valor Monetário (R$)</option>
+              <option value="monetario">Valor Monetário (R$)</option>
               <option value="decimal">Decimal</option>
             </select>
           </div>
           <div class="fi"><label>Bom Quando</label>
             <select id="drw-bom" class="dirty">
-              <option value="Maior">Maior (↑ melhor)</option>
-              <option value="Menor">Menor (↓ melhor)</option>
+              <option value="maior">Maior (↑ melhor)</option>
+              <option value="menor">Menor (↓ melhor)</option>
             </select>
           </div>
         </div>
@@ -474,6 +474,7 @@
 <!-- ═══════════════════════════════════════════════════════
      SCRIPTS (ordem de carregamento)
 ════════════════════════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/data.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/api.js"></script>
