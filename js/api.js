@@ -259,12 +259,22 @@ async function apiSaveMeta(payload) {
 }
 
 // ── apiSaveMetaMensal ─────────────────────────────────────────
-// onConflict usa o UNIQUE constraint (id_meta, ano, mes)
+// Payload limpo (só colunas da tabela). NÃO envia 'id': o banco gera no
+// insert e o conflito é resolvido por (id_meta, ano, mes). Isso evita erro
+// quando a meta é nova e o registro mensal tinha id provisório (mm-xxx).
 async function apiSaveMetaMensal(payload) {
   if (!isLiveMode()) return { ok: true, demo: true };
+  const dbPayload = {
+    id_meta:          payload.id_meta,
+    ano:              parseInt(payload.ano) || 2026,
+    mes:              parseInt(payload.mes),
+    valor_meta:       (payload.valor_meta      != null && payload.valor_meta      !== '') ? parseFloat(payload.valor_meta)      : null,
+    valor_realizado:  (payload.valor_realizado != null && payload.valor_realizado !== '') ? parseFloat(payload.valor_realizado) : null,
+    origem_realizado: payload.origem_realizado || 'manual',
+  };
   const { error } = await _supa
     .from('metas_mensais')
-    .upsert(payload, { onConflict: 'id_meta,ano,mes' });
+    .upsert(dbPayload, { onConflict: 'id_meta,ano,mes' });
   if (error) throw error;
   const idx = DB.metasMensais.findIndex(
     m => m.id_meta === payload.id_meta && m.mes === payload.mes && m.ano === payload.ano
