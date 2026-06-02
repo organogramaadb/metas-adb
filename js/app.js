@@ -511,14 +511,18 @@ function saveDrawer() {
   closeDrawer();
   toast(isNew ? '✅ Nova meta criada com sucesso!' : '✅ Meta salva com sucesso!', 'ok');
 
-  // Persiste no servidor (fire-and-forget — não bloqueia a UI)
+  // Persiste no servidor. isNew foi capturado ANTES do delete _isNew acima,
+  // por isso é passado explicitamente (senão a API faria UPDATE de meta inexistente).
   if (isLiveMode()) {
-    apiSaveMeta(meta).catch(err => toast('Erro ao salvar meta: ' + err.message, 'err'));
-    for (const inp of [...metaInputs, ...realInputs]) {
-      const mes = parseInt(inp.dataset.mes);
-      const reg = DB.metasMensais.find(r => r.id_meta === meta.id && r.ano === ANO_ATUAL && r.mes === mes);
-      if (reg) apiSaveMetaMensal(reg).catch(() => {});
-    }
+    const metaId = meta.id;
+    // Salva a meta primeiro; só depois os valores mensais (a meta precisa existir
+    // no banco antes dos registros mensais por causa da chave estrangeira).
+    apiSaveMeta(meta, isNew)
+      .then(() => {
+        const mensaisDaMeta = DB.metasMensais.filter(r => r.id_meta === metaId && r.ano === ANO_ATUAL);
+        return Promise.all(mensaisDaMeta.map(reg => apiSaveMetaMensal(reg).catch(() => {})));
+      })
+      .catch(err => toast('Erro ao salvar meta: ' + err.message, 'err'));
     // Logs
     DB.logs.filter(l => !l._synced).forEach(l => {
       l._synced = true;

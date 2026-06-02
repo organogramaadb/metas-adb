@@ -201,7 +201,7 @@ async function loadData() {
 // ── apiSaveMeta ───────────────────────────────────────────────
 // Traduz o objeto frontend (campos como 'nome', 'seq', 'status') para
 // o schema real da tabela metas no Supabase.
-async function apiSaveMeta(payload) {
+async function apiSaveMeta(payload, forceNew = false) {
   if (!isLiveMode()) return { ok: true, demo: true };
 
   // id_kpi_responsavel: se não vier no payload, busca o primeiro para o KPI
@@ -242,7 +242,7 @@ async function apiSaveMeta(payload) {
 
   // INSERT para metas novas, UPDATE para existentes
   // Evita o problema de RLS com UPSERT (PostgreSQL verifica INSERT antes de saber se é UPDATE)
-  const isNew = !!payload._isNew;
+  const isNew = forceNew || !!payload._isNew;
   let error;
   if (isNew) {
     ({ error } = await _supa.from('metas').insert(dbPayload));
