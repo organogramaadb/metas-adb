@@ -369,6 +369,11 @@ function openDrawer(metaId, kpiId) {
 
   buildMonthGrids(meta);
   switchDrawerTab('dados', document.querySelector('.drw-tab.on'));
+
+  // Botão excluir: só para meta existente (não nova) e com permissão de edição
+  const delBtn = document.getElementById('btn-meta-delete');
+  if (delBtn) delBtn.style.display = (!meta._isNew && canEditMeta(meta)) ? '' : 'none';
+
   document.getElementById('drawer').classList.add('open');
   document.getElementById('drawer-overlay').classList.add('on');
 }
@@ -523,6 +528,48 @@ function saveDrawer() {
 
   // Re-renderiza a página do KPI
   if (currentKpiId) showKPI(currentKpiId);
+}
+
+// ── Excluir Meta ──────────────────────────────────────────────────
+function deleteMeta(metaId) {
+  const meta = DB.metas.find(m => m.id === metaId);
+  if (!meta) return;
+  if (!canEditMeta(meta)) { toast('Sem permissão para excluir esta meta.', 'err'); return; }
+
+  // Avisa se há projetos vinculados
+  const projsVinc = DB.projetos.filter(p => p.id_meta === metaId && p.ativo);
+  const aviso = projsVinc.length
+    ? `\n\nAtenção: ${projsVinc.length} projeto(s) estão vinculados a esta meta e ficarão sem meta vinculada.`
+    : '';
+  if (!confirm(`Excluir a meta "${meta.nome}"?${aviso}\n\nEsta ação remove a meta e seus valores mensais do painel.`)) return;
+
+  DB.metas = DB.metas.filter(m => m.id !== metaId);
+  DB.metasMensais = DB.metasMensais.filter(mm => mm.id_meta !== metaId);
+
+  if (isLiveMode()) {
+    apiDeleteMeta(metaId)
+      .then(() => {
+        addLog('DELETE', 'metas', metaId, 'nome', meta.nome, 'excluída');
+        DB.logs.filter(l => !l._synced).forEach(l => { l._synced = true; apiAddLog(l).catch(() => {}); });
+      })
+      .catch(err => toast('Erro ao excluir no servidor: ' + err.message, 'err'));
+  }
+
+  toast('🗑️ Meta excluída.', '');
+  if (currentKpiId) showKPI(currentKpiId);
+}
+
+// Chamado pelo botão "Excluir Meta" dentro do drawer
+function deleteMetaFromDrawer() {
+  if (!drawerMetaId) return;
+  const id = drawerMetaId;
+  // fecha o drawer sem disparar a limpeza de "nova meta"
+  const m = DB.metas.find(x => x.id === id);
+  if (m && m._isNew) { closeDrawer(); return; }
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('on');
+  drawerMetaId = null;
+  deleteMeta(id);
 }
 
 // ── Modal Editar KPI ──────────────────────────────────────────────

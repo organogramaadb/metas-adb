@@ -336,6 +336,17 @@ async function apiDeleteProject(id) {
   return { ok: true };
 }
 
+// ── apiDeleteMeta ─────────────────────────────────────────────
+// Soft delete (ativo=false): preserva histórico de auditoria e não quebra
+// projetos vinculados. A meta some das telas mas continua no banco.
+async function apiDeleteMeta(id) {
+  if (!isLiveMode()) return { ok: true, demo: true };
+  const { error } = await _supa.from('metas').update({ ativo: false }).eq('id', id);
+  if (error) throw error;
+  DB.metas = DB.metas.filter(m => m.id !== id);
+  return { ok: true };
+}
+
 // ── apiSaveKpi ────────────────────────────────────────────────
 // O objeto KPI do frontend mistura dados de duas tabelas:
 //   tabela kpis            → nome, area, descricao, nome_completo
