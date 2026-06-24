@@ -9,7 +9,8 @@ const LOGO_B64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACq
 const USUARIOS = [
   { email:'admin@amigosdobem.org.br',               senha:'admin', nome:'Administrador',     perfil:'Admin',       responsavel:'*',                 diretoria:'*',                 ativo:true },
   { email:'daniel.benedetti@amigosdobem.org.br',    senha:'admin', nome:'Daniel Benedetti',  perfil:'Admin',       responsavel:'Daniel Benedetti',  diretoria:'Fernando Medeiros', ativo:true },
-  { email:'roberto.barroso@amigosdobem.org.br',     senha:'admin', nome:'Roberto Barroso',   perfil:'Responsavel', responsavel:'Roberto Barroso',   diretoria:'Alcione Albanesi',  ativo:true },
+  { email:'roberto.barroso@amigosdobem.org.br',     senha:'admin',        nome:'Roberto Barroso',          perfil:'Responsavel', responsavel:'Roberto Barroso',          diretoria:'Alcione Albanesi',  ativo:true },
+  { email:'thiago.rufino@amigosdobem.org',           senha:'Rufino@123',   nome:'Thiago Gonçalves Rufino',  perfil:'Responsavel', responsavel:'Thiago Rufino',            diretoria:'Alcione Albanesi',  ativo:true },
   { email:'gisele.carneiro@amigosdobem.org.br',     senha:'admin', nome:'Gisele Carneiro',   perfil:'Responsavel', responsavel:'Gisele Carneiro',   diretoria:'Fernando Medeiros', ativo:true },
   { email:'alceu.caldeira@amigosdobem.org.br',      senha:'admin', nome:'Alceu Caldeira',    perfil:'DiretorN1',   responsavel:'Alceu Caldeira',    diretoria:'Alceu Caldeira',    ativo:true },
 ];
@@ -31,7 +32,7 @@ const KPIS = [
   // ── EDUCACAO ───────────────────────────────────────────────────
   { id:'kpi-201', codigo:'2.01', nome:'KPI EDUCACAO',                    area:'EDUCACAO',              responsaveis:['Alceu Caldeira'],     diretoria:'Alceu Caldeira',   descricao:'Centros de Transformação e programas educacionais', ativo:true },
   // ── AREA_PRODUTIVA ─────────────────────────────────────────────
-  { id:'kpi-301', codigo:'3.01', nome:'KPI PRODUCAO',                    area:'AREA_PRODUTIVA',        responsaveis:['Roberto Barroso'],    diretoria:'Alcione Albanesi', descricao:'Produção de amêndoa e controle de custos industriais', ativo:true },
+  { id:'kpi-301', codigo:'3.01', nome:'KPI PRODUCAO',                    area:'AREA_PRODUTIVA',        responsaveis:['Roberto Barroso','Thiago Rufino'], diretoria:'Alcione Albanesi', descricao:'Produção de amêndoa e controle de custos industriais', ativo:true },
   { id:'kpi-303', codigo:'3.03', nome:'KPI LOGISTICA',                   area:'AREA_PRODUTIVA',        responsaveis:['Edmilson Lima'],      diretoria:'Alcione Albanesi', descricao:'Gestão da cadeia logística e distribuição', ativo:true },
   { id:'kpi-304', codigo:'3.04', nome:'KPI ADMINISTRACAO PRODUTIVO',     area:'AREA_PRODUTIVA',        responsaveis:[],                     diretoria:'Alcione Albanesi', descricao:'A definir', ativo:true },
   { id:'kpi-308', codigo:'3.08', nome:'KPI COMERCIAL',                   area:'AREA_PRODUTIVA',        responsaveis:['Fernando Sanches'],   diretoria:'Alcione Albanesi', descricao:'Vendas e relacionamento comercial', ativo:true },

@@ -48,13 +48,19 @@ function canSeeKPI(kpi) {
 function canEditMeta(meta) {
   if (!SESSION) return false;
   if (isAdmin()) return true;
-  return meta.responsavel === SESSION.responsavel;
+  if (meta.responsavel === SESSION.responsavel) return true;
+  // Co-responsável do KPI também pode editar as metas do KPI
+  const kpi = (DB.kpis || KPIS).find(k => k.id === meta.id_kpi);
+  return !!(kpi && (kpi.responsaveis || []).includes(SESSION.responsavel));
 }
 
 function canEditProject(proj) {
   if (!SESSION) return false;
   if (isAdmin()) return true;
-  return proj.responsavel === SESSION.responsavel;
+  if (proj.responsavel === SESSION.responsavel) return true;
+  // Co-responsável do KPI também pode editar os projetos do KPI
+  const kpi = (DB.kpis || KPIS).find(k => k.id === proj.id_kpi);
+  return !!(kpi && (kpi.responsaveis || []).includes(SESSION.responsavel));
 }
 
 function allowedKPIs() {

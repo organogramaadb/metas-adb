@@ -413,6 +413,85 @@ async function apiSaveKpi(kpi) {
   return { ok: true };
 }
 
+// ── apiSaveUser ───────────────────────────────────────────
+// Grava/atualiza linha na tabela usuarios. Para novo usuário,
+// envia convite via Supabase Auth (requer e-mail confirmado ou
+// "autoconfirm" habilitado no projeto Supabase).
+const PERFIL_DB_MAP = { Admin:'administrador', DiretorN1:'diretoria_n1', Responsavel:'responsavel' };
+
+async function apiSaveUser({ email, nome, perfil, senha, ativo, isNew }) {
+  if (!isLiveMode()) return { ok: true, demo: true };
+
+  const perfilDb = PERFIL_DB_MAP[perfil] || perfil.toLowerCase();
+  const row = {
+    email,
+    nome,
+    perfil_acesso:          perfilDb,
+    responsavel_vinculado:  nome,
+    ativo,
+  };
+
+  if (isNew) {
+    const { error: e1 } = await _supa.from('usuarios').insert(row);
+    if (e1 && !e1.message?.includes('duplicate')) throw e1;
+    // Tenta criar acesso Auth via convite
+    if (senha) {
+      const { error: e2 } = await _supa.auth.signUp({ email, password: senha });
+      if (e2 && !e2.message?.includes('already registered')) {
+        console.warn('Auth signUp parcial:', e2.message);
+      }
+    }
+  } else {
+    const update = { nome, perfil_acesso: perfilDb, responsavel_vinculado: nome, ativo };
+    const { error } = await _supa.from('usuarios').update(update).eq('email', email);
+    if (error) throw error;
+  }
+  return { ok: true };
+}
+
+// ── apiSyncKpiAccess ──────────────────────────────────────
+// Sincroniza tabela kpi_responsaveis para um usuário:
+// adiciona KPIs selecionados, desativa os removidos.
+async function apiSyncKpiAccess(nomeUsuario, selectedKpiIds, perfil) {
+  if (!isLiveMode()) return { ok: true, demo: true };
+  if (perfil !== 'Responsavel') return { ok: true }; // Admin/DiretorN1 não usam kpi_responsaveis
+
+  const { data: atuais, error: e1 } = await _supa
+    .from('kpi_responsaveis')
+    .select('id, id_kpi, ativo')
+    .eq('responsavel', nomeUsuario);
+  if (e1) throw e1;
+
+  const atuaisMap = {};
+  for (const r of (atuais || [])) atuaisMap[r.id_kpi] = r;
+
+  // Desativa KPIs que saíram
+  for (const r of (atuais || [])) {
+    if (r.ativo && !selectedKpiIds.includes(r.id_kpi)) {
+      await _supa.from('kpi_responsaveis').update({ ativo: false }).eq('id', r.id);
+    }
+  }
+  // Insere/reativa KPIs selecionados
+  for (const kpiId of selectedKpiIds) {
+    const kpi = (DB.kpis || KPIS).find(k => k.id === kpiId);
+    const diretoria = kpi?.diretoria || null;
+    const existente = atuaisMap[kpiId];
+    if (existente) {
+      await _supa.from('kpi_responsaveis').update({ ativo: true, diretor: diretoria }).eq('id', existente.id);
+    } else {
+      await _supa.from('kpi_responsaveis').insert({ id_kpi: kpiId, responsavel: nomeUsuario, diretor: diretoria, ativo: true });
+    }
+  }
+  // Atualiza cache local
+  for (const k of KPIS) {
+    const had = (k.responsaveis || []).includes(nomeUsuario);
+    const wants = selectedKpiIds.includes(k.id);
+    if (wants && !had)  k.responsaveis = [...(k.responsaveis||[]), nomeUsuario];
+    if (!wants && had)  k.responsaveis = (k.responsaveis||[]).filter(r => r !== nomeUsuario);
+  }
+  return { ok: true };
+}
+
 // ── apiAddLog ─────────────────────────────────────────────────
 // Traduz payload interno (engine.js) para o schema de logs_auditoria
 async function apiAddLog(payload) {

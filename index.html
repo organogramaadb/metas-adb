@@ -201,6 +201,40 @@
         </div>
 
       </div><!-- /view-kpi -->
+
+      <!-- ── VIEW: GERENCIAR ACESSOS (Admin only) ───── -->
+      <div id="view-users">
+        <div class="index-welcome">
+          <h2>Gerenciamento de Acessos</h2>
+          <p>Adicione, edite ou remova usuários e configure quais KPIs cada um pode acessar.</p>
+        </div>
+        <div class="section">
+          <div class="sec-hd">
+            <div><div class="sec-title">Usuários Cadastrados</div></div>
+            <div class="sec-btns">
+              <button class="sec-btn primary" onclick="openUserModal(null)">+ Novo Usuário</button>
+            </div>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>E-mail</th>
+                  <th class="tbl-c">Perfil</th>
+                  <th>KPIs com Acesso</th>
+                  <th class="tbl-c">Status</th>
+                  <th class="tbl-c">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="users-tbody">
+                <tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">👤</div><div class="empty-state-t">Carregando...</div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /view-users -->
+
     </div><!-- /content -->
   </div><!-- /main -->
 </div><!-- /app -->
@@ -464,6 +498,60 @@
   </div>
 </div>
 
+<!-- Modal Gerenciar Usuário ═══════════════════════════════════════ -->
+<div class="overlay" id="user-modal">
+  <div class="modal usr-modal">
+    <div class="mhd">
+      <div class="mhd-t" id="user-modal-title">Novo Usuário</div>
+      <button class="mhd-x" onclick="closeUserModal()">×</button>
+    </div>
+    <div class="mbd usr-mbd">
+      <div class="fg">
+        <div class="fgt">Identificação</div>
+        <div class="fr">
+          <div class="fi"><label>Nome Completo *</label>
+            <input type="text" id="usr-nome" placeholder="Ex.: Roberto Barroso">
+          </div>
+          <div class="fi"><label>E-mail *</label>
+            <input type="email" id="usr-email" placeholder="nome@amigosdobem.org">
+          </div>
+        </div>
+        <div class="fr">
+          <div class="fi">
+            <label>Senha <span id="usr-pwd-hint" class="usr-hint">(deixe vazio para manter)</span></label>
+            <input type="text" id="usr-pwd" placeholder="Nova senha" autocomplete="new-password">
+          </div>
+          <div class="fi"><label>Perfil de Acesso *</label>
+            <select id="usr-perfil" onchange="onUserPerfilChange()">
+              <option value="Responsavel">Responsável (por KPI)</option>
+              <option value="DiretorN1">Diretoria N1 — vê todos</option>
+              <option value="Admin">Administrador</option>
+            </select>
+          </div>
+        </div>
+        <div class="fr">
+          <div class="fi"><label>Status</label>
+            <select id="usr-ativo">
+              <option value="true">Ativo</option>
+              <option value="false">Inativo</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="fg" id="usr-kpis-section">
+        <div class="fgt">KPIs com Acesso</div>
+        <p class="usr-kpi-hint">Marque os KPIs que este usuário pode visualizar e editar metas e projetos.</p>
+        <div id="usr-kpis-list"></div>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn-delete" id="btn-user-delete" onclick="deleteUserConfirm()" style="display:none">🗑️ Excluir</button>
+      <button class="btn-cancel" onclick="closeUserModal()">Cancelar</button>
+      <button class="btn-save" onclick="saveUser()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div id="toast"></div>
 
@@ -472,10 +560,10 @@
 ════════════════════════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- ?v= força o navegador a buscar a versão nova após cada publicação (cache-busting). Incrementar a cada deploy. -->
-<script src="js/data.js?v=20260602c"></script>
-<script src="js/engine.js?v=20260602c"></script>
-<script src="js/api.js?v=20260602c"></script>
-<script src="js/app.js?v=20260602c"></script>
+<script src="js/data.js?v=20260624a"></script>
+<script src="js/engine.js?v=20260624a"></script>
+<script src="js/api.js?v=20260624a"></script>
+<script src="js/app.js?v=20260624a"></script>
 
 </body>
 </html>

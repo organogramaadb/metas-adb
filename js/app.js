@@ -7,6 +7,8 @@ let currentKpiId = null;
 let drawerMetaId = null;
 let drawerCurrentTab = 'dados';
 let editingProjId = null;
+let currentView = 'index';   // 'index' | 'kpi' | 'users'
+let editingUserEmail = null; // null = novo usuário
 
 // ── Toast ─────────────────────────────────────────────────────────
 let toastTimer;
@@ -59,6 +61,13 @@ function renderNav() {
     }
     html += `</div></div>`;
   }
+  if (isAdmin()) {
+    html += `<div class="nav-admin-sep"></div>
+      <div class="nav-kpi nav-admin-link${currentView==='users'?' sel':''}" onclick="showUsersAdmin()">
+        <span class="nav-kpi-code" style="font-size:13px">⚙</span>
+        <span class="nav-kpi-name">Gerenciar Acessos</span>
+      </div>`;
+  }
   document.getElementById('nav-inner').innerHTML = html;
 }
 
@@ -75,7 +84,9 @@ function highlightNav(kpiId) {
 // ── View: Index ───────────────────────────────────────────────────
 function showIndex() {
   currentKpiId = null;
+  currentView = 'index';
   document.getElementById('view-kpi').classList.remove('on');
+  document.getElementById('view-users').classList.remove('on');
   document.getElementById('view-index').classList.add('on');
   highlightNav(null);
   setBreadcrumb([{ label: 'Início' }]);
@@ -128,7 +139,9 @@ function showKPI(kpiId) {
   if (!kpi || !canSeeKPI(kpi)) return;
 
   currentKpiId = kpiId;
+  currentView = 'kpi';
   document.getElementById('view-index').classList.remove('on');
+  document.getElementById('view-users').classList.remove('on');
   document.getElementById('view-kpi').classList.add('on');
   highlightNav(kpiId);
   setBreadcrumb([
@@ -790,6 +803,231 @@ function setBreadcrumb(items) {
     else           html += `<span style="color:#888">${it.label}</span>`;
   }
   document.getElementById('breadcrumb').innerHTML = html;
+}
+
+// ── Gerenciamento de Usuários (Admin) ─────────────────────────────
+
+function showUsersAdmin() {
+  if (!isAdmin()) return;
+  currentView = 'users';
+  currentKpiId = null;
+  document.getElementById('view-index').classList.remove('on');
+  document.getElementById('view-kpi').classList.remove('on');
+  document.getElementById('view-users').classList.add('on');
+  renderNav();
+  setBreadcrumb([{ label: 'Início', action: 'showIndex()' }, { label: 'Gerenciar Acessos' }]);
+  loadAndRenderUsers();
+}
+
+async function loadAndRenderUsers() {
+  let users = [];
+  if (isLiveMode()) {
+    try {
+      const { data, error } = await _supa.from('usuarios').select('*').order('nome');
+      if (error) throw error;
+      users = (data || []).map(u => ({
+        email: u.email, nome: u.nome,
+        perfil: u.perfil_acesso, responsavel: u.responsavel_vinculado,
+        senha: '', ativo: u.ativo,
+      }));
+    } catch(e) { toast('Erro ao carregar usuários: ' + e.message, 'err'); return; }
+  } else {
+    users = USUARIOS.map(u => ({ ...u }));
+  }
+  _usersCache = users;
+  renderUsersTable(users);
+}
+
+function renderUsersTable(users) {
+  if (!users.length) {
+    document.getElementById('users-tbody').innerHTML =
+      '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">👤</div><div class="empty-state-t">Nenhum usuário cadastrado</div></div></td></tr>';
+    return;
+  }
+  const PERFIL_LABEL = { Admin: 'Administrador', DiretorN1: 'Diretoria N1', Responsavel: 'Responsável', responsavel: 'Responsável', administrador: 'Administrador', diretoria_n1: 'Diretoria N1' };
+  let rows = '';
+  for (const u of users) {
+    const perfil = PERFIL_LABEL[u.perfil] || u.perfil || '—';
+    const ativo = u.ativo === true || u.ativo === 'true' || u.ativo === 'TRUE';
+    const statusBadge = ativo
+      ? '<span class="usr-badge-on">Ativo</span>'
+      : '<span class="usr-badge-off">Inativo</span>';
+
+    let kpisHtml = '—';
+    const perfilNorm = String(u.perfil || '').toLowerCase();
+    if (perfilNorm === 'admin' || perfilNorm === 'administrador') {
+      kpisHtml = '<span style="color:#888;font-size:11px">Todos (admin)</span>';
+    } else if (perfilNorm === 'diretorn1' || perfilNorm === 'diretoria_n1') {
+      kpisHtml = '<span style="color:#888;font-size:11px">Todos (leitura)</span>';
+    } else {
+      const nome = u.responsavel || u.nome || '';
+      const kpisAcesso = KPIS.filter(k => (k.responsaveis || []).includes(nome));
+      kpisHtml = kpisAcesso.length
+        ? kpisAcesso.map(k => `<span class="usr-kpi-tag">${k.codigo}</span>`).join(' ')
+        : '<span style="color:#aaa;font-size:11px">Nenhum</span>';
+    }
+
+    rows += `<tr>
+      <td><strong>${u.nome}</strong></td>
+      <td style="font-size:12px;color:#555">${u.email}</td>
+      <td class="tbl-c"><span class="usr-badge-perfil">${perfil}</span></td>
+      <td>${kpisHtml}</td>
+      <td class="tbl-c">${statusBadge}</td>
+      <td class="tbl-c"><button class="tbl-btn" onclick="openUserModal('${u.email}')">Editar</button></td>
+    </tr>`;
+  }
+  document.getElementById('users-tbody').innerHTML = rows;
+}
+
+function openUserModal(emailOrNull) {
+  editingUserEmail = emailOrNull;
+  const isNew = !emailOrNull;
+
+  document.getElementById('user-modal-title').textContent = isNew ? 'Novo Usuário' : 'Editar Usuário';
+  document.getElementById('usr-pwd-hint').style.display = isNew ? 'none' : '';
+  document.getElementById('btn-user-delete').style.display = isNew ? 'none' : '';
+
+  if (isNew) {
+    document.getElementById('usr-nome').value  = '';
+    document.getElementById('usr-email').value = '';
+    document.getElementById('usr-pwd').value   = '';
+    document.getElementById('usr-perfil').value = 'Responsavel';
+    document.getElementById('usr-ativo').value = 'true';
+  } else {
+    // Busca o usuário na lista renderizada (demo) ou pelo email
+    let u = null;
+    if (!isLiveMode()) {
+      u = USUARIOS.find(x => x.email === emailOrNull);
+    } else {
+      // Dados vêm do servidor — usa o que está em cache na tabela renderizada
+      u = _usersCache ? _usersCache.find(x => x.email === emailOrNull) : null;
+    }
+    if (!u) { toast('Usuário não encontrado.', 'err'); return; }
+    document.getElementById('usr-nome').value   = u.nome  || '';
+    document.getElementById('usr-email').value  = u.email || '';
+    document.getElementById('usr-pwd').value    = '';
+    const perfilVal = { administrador:'Admin', diretoria_n1:'DiretorN1', responsavel:'Responsavel' }[String(u.perfil||'').toLowerCase()] || u.perfil || 'Responsavel';
+    document.getElementById('usr-perfil').value = perfilVal;
+    document.getElementById('usr-ativo').value  = String(u.ativo === true || u.ativo === 'true' || u.ativo === 'TRUE');
+  }
+
+  onUserPerfilChange();
+  document.getElementById('user-modal').classList.add('on');
+}
+
+// Cache de usuários para edição sem re-fetch
+let _usersCache = null;
+
+function closeUserModal() {
+  document.getElementById('user-modal').classList.remove('on');
+  editingUserEmail = null;
+}
+
+function onUserPerfilChange() {
+  const perfil = document.getElementById('usr-perfil').value;
+  const showKpis = (perfil === 'Responsavel');
+  document.getElementById('usr-kpis-section').style.display = showKpis ? '' : 'none';
+  if (showKpis) buildKpiCheckboxes();
+}
+
+function buildKpiCheckboxes() {
+  const nome = document.getElementById('usr-nome').value.trim() ||
+    (editingUserEmail ? (USUARIOS.find(u=>u.email===editingUserEmail)||{}).responsavel || '' : '');
+
+  // Agrupa KPIs por área
+  const areas = {};
+  for (const k of KPIS) {
+    if (!k.ativo) continue;
+    if (!areas[k.area]) areas[k.area] = [];
+    areas[k.area].push(k);
+  }
+  let html = '';
+  for (const [area, list] of Object.entries(areas)) {
+    html += `<div class="usr-kpi-area-label">${areaLabel(area)}</div><div class="usr-kpi-checks">`;
+    for (const k of list) {
+      const checked = nome && (k.responsaveis || []).includes(nome) ? 'checked' : '';
+      html += `<label class="usr-kpi-check">
+        <input type="checkbox" value="${k.id}" ${checked}>
+        <span><strong>${k.codigo}</strong> ${k.nome.replace('KPI ','')}</span>
+      </label>`;
+    }
+    html += '</div>';
+  }
+  document.getElementById('usr-kpis-list').innerHTML = html;
+}
+
+async function saveUser() {
+  const nome  = document.getElementById('usr-nome').value.trim();
+  const email = document.getElementById('usr-email').value.trim().toLowerCase();
+  const senha = document.getElementById('usr-pwd').value;
+  const perfil = document.getElementById('usr-perfil').value;
+  const ativo  = document.getElementById('usr-ativo').value === 'true';
+  const isNew  = !editingUserEmail;
+
+  if (!nome)  { toast('Informe o nome completo.', 'err'); return; }
+  if (!email) { toast('Informe o e-mail.', 'err'); return; }
+  if (isNew && !senha) { toast('Defina uma senha para o novo usuário.', 'err'); return; }
+
+  // KPIs selecionados (apenas para Responsavel)
+  const selectedKpiIds = perfil === 'Responsavel'
+    ? [...document.querySelectorAll('#usr-kpis-list input[type=checkbox]:checked')].map(c => c.value)
+    : [];
+
+  if (!isLiveMode()) {
+    // ── Demo mode ───────────────────────────────────────────
+    if (isNew) {
+      if (USUARIOS.find(u => u.email === email)) { toast('E-mail já cadastrado.', 'err'); return; }
+      USUARIOS.push({ email, nome, perfil, responsavel: nome, diretoria: '', senha, ativo });
+    } else {
+      const u = USUARIOS.find(x => x.email === editingUserEmail);
+      if (u) { u.nome = nome; u.perfil = perfil; u.ativo = ativo; if (senha) u.senha = senha; }
+    }
+    // Atualiza responsaveis dos KPIs em memória
+    const oldNome = editingUserEmail
+      ? (USUARIOS.find(u => u.email === editingUserEmail) || {}).responsavel || ''
+      : '';
+    for (const k of KPIS) {
+      const tinha = (k.responsaveis || []).includes(oldNome || nome);
+      const quer  = selectedKpiIds.includes(k.id);
+      if (quer && !tinha)  k.responsaveis = [...(k.responsaveis||[]), nome];
+      if (!quer && tinha)  k.responsaveis = (k.responsaveis||[]).filter(r => r !== (oldNome||nome));
+    }
+    closeUserModal();
+    toast(isNew ? '✅ Usuário criado!' : '✅ Usuário atualizado!', 'ok');
+    loadAndRenderUsers();
+    return;
+  }
+
+  // ── Live mode (Supabase) ─────────────────────────────────
+  try {
+    await apiSaveUser({ email, nome, perfil, senha: senha||null, ativo, isNew });
+    await apiSyncKpiAccess(nome, selectedKpiIds, perfil);
+    closeUserModal();
+    toast(isNew ? '✅ Usuário criado!' : '✅ Usuário atualizado!', 'ok');
+    if (isNew) toast('Acesso de login criado via convite — verifique o e-mail.', '');
+    loadAndRenderUsers();
+  } catch(e) { toast('Erro ao salvar: ' + e.message, 'err'); }
+}
+
+function deleteUserConfirm() {
+  const email = editingUserEmail;
+  if (!email) return;
+  const u = USUARIOS.find(x => x.email === email) || { nome: email };
+  if (!confirm(`Excluir o usuário "${u.nome}"?\n\nEle perderá acesso imediatamente.`)) return;
+
+  if (!isLiveMode()) {
+    const idx = USUARIOS.findIndex(x => x.email === email);
+    if (idx >= 0) USUARIOS.splice(idx, 1);
+    // Remove dos KPIs
+    for (const k of KPIS) k.responsaveis = (k.responsaveis||[]).filter(r => r !== u.responsavel);
+    closeUserModal();
+    toast('🗑️ Usuário removido.', '');
+    loadAndRenderUsers();
+    return;
+  }
+  _supa.from('usuarios').update({ ativo: false }).eq('email', email)
+    .then(() => { closeUserModal(); toast('🗑️ Usuário desativado.', ''); loadAndRenderUsers(); })
+    .catch(e => toast('Erro: ' + e.message, 'err'));
 }
 
 // ── Inicialização ─────────────────────────────────────────────────
