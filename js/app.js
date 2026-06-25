@@ -1000,11 +1000,14 @@ async function saveUser() {
 
   // ── Live mode (Supabase) ─────────────────────────────────
   try {
-    await apiSaveUser({ email, nome, perfil, senha: senha||null, ativo, isNew });
+    await apiSaveUser({ email, nome, perfil, senha: senha||null, ativo, isNew, currentEmail: editingUserEmail });
     await apiSyncKpiAccess(nome, selectedKpiIds, perfil);
     closeUserModal();
-    toast(isNew ? '✅ Usuário criado!' : '✅ Usuário atualizado!', 'ok');
-    if (isNew) toast('Acesso de login criado via convite — verifique o e-mail.', '');
+    if (isNew) {
+      toast('✅ Usuário criado! Login já ativo — pode entrar com a senha definida.', 'ok');
+    } else {
+      toast(senha ? '✅ Usuário atualizado (senha redefinida).' : '✅ Usuário atualizado!', 'ok');
+    }
     loadAndRenderUsers();
   } catch(e) { toast('Erro ao salvar: ' + e.message, 'err'); }
 }
@@ -1025,9 +1028,13 @@ function deleteUserConfirm() {
     loadAndRenderUsers();
     return;
   }
-  _supa.from('usuarios').update({ ativo: false }).eq('email', email)
-    .then(() => { closeUserModal(); toast('🗑️ Usuário desativado.', ''); loadAndRenderUsers(); })
-    .catch(e => toast('Erro: ' + e.message, 'err'));
+  apiDeleteUser(email)
+    .then((r) => {
+      closeUserModal();
+      toast(r && r.note ? '🗑️ Login removido (perfil mantido inativo).' : '🗑️ Usuário e login removidos.', '');
+      loadAndRenderUsers();
+    })
+    .catch(e => toast('Erro ao excluir: ' + e.message, 'err'));
 }
 
 // ── Inicialização ─────────────────────────────────────────────────
@@ -1043,12 +1050,12 @@ function deleteUserConfirm() {
       if (session) {
         const { data: perfil } = await _supa
           .from('usuarios')
-          .select('nome, perfil, responsavel, ativo')
+          .select('nome, perfil_acesso, responsavel_vinculado, diretoria_vinculada, ativo')
           .eq('email', session.user.email)
           .single();
         if (perfil && perfil.ativo) {
-          const perfilMapped = { 'Admin': 'Admin', 'Gestor': 'Responsavel', 'Consulta': 'DiretorN1' }[perfil.perfil] || perfil.perfil;
-          DB.usuario = { email: session.user.email, nome: perfil.nome, perfil: perfilMapped, responsavel: perfil.responsavel, ativo: true };
+          const perfilMapped = PERFIL_MAP[perfil.perfil_acesso] || perfil.perfil_acesso;
+          DB.usuario = { email: session.user.email, nome: perfil.nome, perfil: perfilMapped, responsavel: perfil.responsavel_vinculado, diretoria: perfil.diretoria_vinculada, ativo: true };
           SESSION = DB.usuario;
           await loadData();
           initApp();

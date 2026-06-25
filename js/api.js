@@ -4,8 +4,8 @@
 // Quando SUPA_URL estiver vazio, opera em modo demo (in-memory)
 // ============================================================
 
-const SUPA_URL = 'https://wzaeprjrunloecjtjtst.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6YWVwcmpydW5sb2VjanRqdHN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNjIxNzEsImV4cCI6MjA5NTczODE3MX0.AHveMOkIEr4mu7qUvJeDSwqEUAzmI2mzvjNay9z7yQk';
+const SUPA_URL = 'https://fibamjsjksszyrfqgszq.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpYmFtanNqa3NzenlyZnFnc3pxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzOTcyMjUsImV4cCI6MjA5Nzk3MzIyNX0.HOINhPxouui6GJoGSFv4coboAR853Uv1MqlwheUIJl0';
 
 // Mapeamento de perfil Supabase (DB) → engine.js
 const PERFIL_MAP = {
@@ -413,40 +413,58 @@ async function apiSaveKpi(kpi) {
   return { ok: true };
 }
 
-// ── apiSaveUser ───────────────────────────────────────────
-// Grava/atualiza linha na tabela usuarios. Para novo usuário,
-// envia convite via Supabase Auth (requer e-mail confirmado ou
-// "autoconfirm" habilitado no projeto Supabase).
-const PERFIL_DB_MAP = { Admin:'administrador', DiretorN1:'diretoria_n1', Responsavel:'responsavel' };
+// ── Gestão de usuários via Edge Function admin-users ──────────
+// Toda a gestão de LOGIN (Supabase Auth) + perfil é feita por uma
+// Edge Function server-side que usa a chave service_role e confere
+// se quem chamou é administrador. O front NUNCA vê a chave admin.
+const PERFIL_DB_MAP = { Admin:'administrador', DiretorN1:'diretoria_n1', Diretor:'diretor', Responsavel:'responsavel' };
 
-async function apiSaveUser({ email, nome, perfil, senha, ativo, isNew }) {
-  if (!isLiveMode()) return { ok: true, demo: true };
-
-  const perfilDb = PERFIL_DB_MAP[perfil] || perfil.toLowerCase();
-  const row = {
-    email,
-    nome,
-    perfil_acesso:          perfilDb,
-    responsavel_vinculado:  nome,
-    ativo,
-  };
-
-  if (isNew) {
-    const { error: e1 } = await _supa.from('usuarios').insert(row);
-    if (e1 && !e1.message?.includes('duplicate')) throw e1;
-    // Tenta criar acesso Auth via convite
-    if (senha) {
-      const { error: e2 } = await _supa.auth.signUp({ email, password: senha });
-      if (e2 && !e2.message?.includes('already registered')) {
-        console.warn('Auth signUp parcial:', e2.message);
-      }
-    }
-  } else {
-    const update = { nome, perfil_acesso: perfilDb, responsavel_vinculado: nome, ativo };
-    const { error } = await _supa.from('usuarios').update(update).eq('email', email);
-    if (error) throw error;
+async function invokeAdminUsers(action, payload) {
+  const { data, error } = await _supa.functions.invoke('admin-users', { body: { action, payload } });
+  if (error) {
+    let msg = error.message || 'Falha na função admin-users';
+    try {
+      const body = await error.context?.json?.();   // erros retornam {error: "..."}
+      if (body?.error) msg = body.error;
+    } catch (_) { /* corpo não-JSON, mantém msg padrão */ }
+    throw new Error(msg);
   }
-  return { ok: true };
+  if (data && data.error) throw new Error(data.error);
+  return data || { ok: true };
+}
+
+// ── apiSaveUser ───────────────────────────────────────────
+// isNew: cria login JÁ CONFIRMADO + perfil.
+// edição: atualiza perfil/e-mail/ativo e, se 'senha' vier, redefine a senha.
+async function apiSaveUser({ email, nome, perfil, senha, ativo, isNew, currentEmail }) {
+  if (!isLiveMode()) return { ok: true, demo: true };
+  if (isNew) {
+    return await invokeAdminUsers('create', { email, nome, perfil, senha, ativo });
+  }
+  return await invokeAdminUsers('update', {
+    currentEmail: currentEmail || email, email, nome, perfil,
+    senha: senha || undefined, ativo,
+  });
+}
+
+// ── apiDeleteUser ─────────────────────────────────────────
+// Remove o login (Auth) e o perfil. Se houver referências no banco,
+// a função mantém o perfil inativo e devolve { note }.
+async function apiDeleteUser(email) {
+  if (!isLiveMode()) return { ok: true, demo: true };
+  return await invokeAdminUsers('delete', { currentEmail: email });
+}
+
+// ── apiResetPassword ──────────────────────────────────────
+async function apiResetPassword(email, senha) {
+  if (!isLiveMode()) return { ok: true, demo: true };
+  return await invokeAdminUsers('reset_password', { currentEmail: email, senha });
+}
+
+// ── apiSetUserActive ──────────────────────────────────────
+async function apiSetUserActive(email, ativo) {
+  if (!isLiveMode()) return { ok: true, demo: true };
+  return await invokeAdminUsers('set_active', { currentEmail: email, ativo });
 }
 
 // ── apiSyncKpiAccess ──────────────────────────────────────
