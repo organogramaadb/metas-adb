@@ -352,7 +352,7 @@ async function apiDeleteMeta(id) {
 //   tabela kpis            → nome, area, descricao, nome_completo
 //   tabela kpi_responsaveis → responsaveis (array), diretoria
 // Esta função grava cada campo na tabela correta.
-const AREAS_VALIDAS = ['ADMINISTRATIVOS','EDUCACAO','AREA_PRODUTIVA','INVESTIMENTOS_SOCIAIS','PROGRAMAS_SOCIAIS'];
+const AREAS_VALIDAS = ['ORGANIZACIONAL','ADMINISTRATIVOS','EDUCACAO','AREA_PRODUTIVA','INVESTIMENTOS_SOCIAIS','PROGRAMAS_SOCIAIS'];
 
 async function apiSaveKpi(kpi) {
   if (!isLiveMode()) return { ok: true, demo: true };
@@ -508,6 +508,45 @@ async function apiSyncKpiAccess(nomeUsuario, selectedKpiIds, perfil) {
     if (!wants && had)  k.responsaveis = (k.responsaveis||[]).filter(r => r !== nomeUsuario);
   }
   return { ok: true };
+}
+
+// ── Comentários do KPI (mural Controladoria ↔ Gestor) ─────────
+// Carrega os comentários de um KPI (ordenados do mais antigo ao mais novo).
+// Tolerante: se a tabela ainda não existe (migração não rodada), devolve [].
+async function apiLoadComentarios(idKpi) {
+  if (!isLiveMode()) {
+    return (DB.comentarios || []).filter(c => c.id_kpi === idKpi);
+  }
+  const { data, error } = await _supa
+    .from('kpi_comentarios')
+    .select('*')
+    .eq('id_kpi', idKpi)
+    .order('criado_em', { ascending: true });
+  if (error) { console.warn('apiLoadComentarios:', error.message); return []; }
+  return data || [];
+}
+
+// Insere um comentário. Retorna a linha persistida (com id/criado_em do banco).
+async function apiAddComentario(payload) {
+  if (!isLiveMode()) {
+    const row = { ...payload, id: uid('c'), criado_em: new Date().toISOString() };
+    DB.comentarios.push(row);
+    return row;
+  }
+  const dbPayload = {
+    id_kpi:      payload.id_kpi,
+    autor_nome:  payload.autor_nome || '',
+    autor_email: payload.autor_email || '',
+    autor_papel: payload.autor_papel || 'Gestor',
+    texto:       payload.texto || '',
+  };
+  const { data, error } = await _supa
+    .from('kpi_comentarios')
+    .insert(dbPayload)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }
 
 // ── apiAddLog ─────────────────────────────────────────────────

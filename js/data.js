@@ -19,6 +19,9 @@ const USUARIOS = [
 // 'area' usa o código do enum do banco (UPPERCASE) — areaLabel() converte para exibição
 // 'responsaveis' é array: permite múltiplos responsáveis por KPI
 const KPIS = [
+  // ── INDICADORES ORGANIZACIONAIS (0.00) — exclusivo do Administrador ──
+  // KPI institucional sem centro de custo próprio. Sempre o primeiro da lista.
+  { id:'kpi-000', codigo:'0.00', nome:'INDICADORES ORGANIZACIONAIS', area:'ORGANIZACIONAL', responsaveis:['Daniel Benedetti'], diretoria:'Fernando Medeiros', descricao:'Metas institucionais consolidadas — visíveis apenas ao Administrador', ativo:true },
   // ── ADMINISTRATIVOS ────────────────────────────────────────────
   { id:'kpi-101', codigo:'1.01', nome:'KPI ADMINISTRACAO CENTRAL',       area:'ADMINISTRATIVOS',       responsaveis:['Daniel Benedetti'],   diretoria:'Fernando Medeiros', descricao:'Gestão dos custos administrativos centrais', ativo:true },
   { id:'kpi-102', codigo:'1.02', nome:'KPI RECURSOS HUMANOS',            area:'ADMINISTRATIVOS',       responsaveis:['Gisele Carneiro'],    diretoria:'Fernando Medeiros', descricao:'Gestão de pessoas, recrutamento e benefícios', ativo:true },
@@ -62,6 +65,10 @@ const KPIS = [
 // ── Metas ─────────────────────────────────────────────────────────
 // Chave: id_kpi + responsavel (conforme regra de governança)
 const METAS = [
+  // KPI 0.00 — Indicadores Organizacionais (demo)
+  { id:'m-000-1', id_kpi:'kpi-000', codigo_kpi:'0.00', seq:1, nome:'Resultado Institucional Consolidado', descricao:'Superávit/déficit consolidado da instituição no exercício', responsavel:'Daniel Benedetti', diretoria:'Fernando Medeiros', tipo_formato:'monetario', unidade_medida:'R$', bom_quando:'maior', formula_atingimento:'real_sobre_meta', tipo_acumulado:'soma', peso:0.5, status:'Ativa', obs:'', ult_at:'23/07/2026', ativo:true },
+  { id:'m-000-2', id_kpi:'kpi-000', codigo_kpi:'0.00', seq:2, nome:'Famílias Atendidas', descricao:'Total de famílias beneficiadas pelos programas sociais no período', responsavel:'Daniel Benedetti', diretoria:'Fernando Medeiros', tipo_formato:'inteiro', unidade_medida:'famílias', bom_quando:'maior', formula_atingimento:'real_sobre_meta', tipo_acumulado:'soma', peso:0.5, status:'Ativa', obs:'', ult_at:'23/07/2026', ativo:true },
+
   // KPI 1.01 — Administração Central
   { id:'m-101-1', id_kpi:'kpi-101', codigo_kpi:'1.01', seq:1, nome:'Controle de Despesas Adm.', descricao:'Manter despesas administrativas centrais dentro do orçamento aprovado', responsavel:'Daniel Benedetti', diretoria:'Fernando Medeiros', tipo_formato:'monetario', unidade_medida:'R$', bom_quando:'menor', formula_atingimento:'real_sobre_meta', tipo_acumulado:'soma',  peso:0.6, status:'Ativa', obs:'', ult_at:'26/05/2026', ativo:true },
   { id:'m-101-2', id_kpi:'kpi-101', codigo_kpi:'1.01', seq:2, nome:'Índice de Satisfação Interna', descricao:'Pesquisa de satisfação com serviços administrativos (NPS interno)', responsavel:'Daniel Benedetti', diretoria:'Fernando Medeiros', tipo_formato:'decimal', unidade_medida:'pontos', bom_quando:'maior', formula_atingimento:'real_sobre_meta', tipo_acumulado:'media', peso:0.4, status:'Ativa', obs:'', ult_at:'15/03/2026', ativo:true },
@@ -79,6 +86,33 @@ const METAS = [
 // ── Metas Mensais ─────────────────────────────────────────────────
 // ano, mes (1-12), valor_meta, valor_realizado (null = não apurado)
 const METAS_MENSAIS = [
+  // KPI 0.00 — Meta 1 (Resultado Institucional — Maior — Moeda)
+  { id:'mm-000-1-1', id_meta:'m-000-1', ano:2026, mes:1, valor_meta:500000, valor_realizado:520000 },
+  { id:'mm-000-1-2', id_meta:'m-000-1', ano:2026, mes:2, valor_meta:500000, valor_realizado:495000 },
+  { id:'mm-000-1-3', id_meta:'m-000-1', ano:2026, mes:3, valor_meta:500000, valor_realizado:540000 },
+  { id:'mm-000-1-4', id_meta:'m-000-1', ano:2026, mes:4, valor_meta:500000, valor_realizado:510000 },
+  { id:'mm-000-1-5', id_meta:'m-000-1', ano:2026, mes:5, valor_meta:500000, valor_realizado:null   },
+  { id:'mm-000-1-6', id_meta:'m-000-1', ano:2026, mes:6, valor_meta:500000, valor_realizado:null   },
+  { id:'mm-000-1-7', id_meta:'m-000-1', ano:2026, mes:7, valor_meta:500000, valor_realizado:null   },
+  { id:'mm-000-1-8', id_meta:'m-000-1', ano:2026, mes:8, valor_meta:500000, valor_realizado:null   },
+  { id:'mm-000-1-9', id_meta:'m-000-1', ano:2026, mes:9, valor_meta:500000, valor_realizado:null   },
+  { id:'mm-000-1-10',id_meta:'m-000-1', ano:2026, mes:10,valor_meta:500000, valor_realizado:null   },
+  { id:'mm-000-1-11',id_meta:'m-000-1', ano:2026, mes:11,valor_meta:500000, valor_realizado:null   },
+  { id:'mm-000-1-12',id_meta:'m-000-1', ano:2026, mes:12,valor_meta:500000, valor_realizado:null   },
+  // KPI 0.00 — Meta 2 (Famílias Atendidas — Maior — Inteiro)
+  { id:'mm-000-2-1', id_meta:'m-000-2', ano:2026, mes:1, valor_meta:1200, valor_realizado:1180 },
+  { id:'mm-000-2-2', id_meta:'m-000-2', ano:2026, mes:2, valor_meta:1200, valor_realizado:1250 },
+  { id:'mm-000-2-3', id_meta:'m-000-2', ano:2026, mes:3, valor_meta:1200, valor_realizado:1310 },
+  { id:'mm-000-2-4', id_meta:'m-000-2', ano:2026, mes:4, valor_meta:1200, valor_realizado:1290 },
+  { id:'mm-000-2-5', id_meta:'m-000-2', ano:2026, mes:5, valor_meta:1200, valor_realizado:null },
+  { id:'mm-000-2-6', id_meta:'m-000-2', ano:2026, mes:6, valor_meta:1200, valor_realizado:null },
+  { id:'mm-000-2-7', id_meta:'m-000-2', ano:2026, mes:7, valor_meta:1200, valor_realizado:null },
+  { id:'mm-000-2-8', id_meta:'m-000-2', ano:2026, mes:8, valor_meta:1200, valor_realizado:null },
+  { id:'mm-000-2-9', id_meta:'m-000-2', ano:2026, mes:9, valor_meta:1200, valor_realizado:null },
+  { id:'mm-000-2-10',id_meta:'m-000-2', ano:2026, mes:10,valor_meta:1200, valor_realizado:null },
+  { id:'mm-000-2-11',id_meta:'m-000-2', ano:2026, mes:11,valor_meta:1200, valor_realizado:null },
+  { id:'mm-000-2-12',id_meta:'m-000-2', ano:2026, mes:12,valor_meta:1200, valor_realizado:null },
+
   // KPI 1.01 — Meta 1 (Despesas Adm. — Menor — Moeda)
   { id:'mm-101-1-1',  id_meta:'m-101-1', ano:2026, mes:1,  valor_meta:195000,  valor_realizado:182000 },
   { id:'mm-101-1-2',  id_meta:'m-101-1', ano:2026, mes:2,  valor_meta:195000,  valor_realizado:188000 },
@@ -195,6 +229,12 @@ const LOGS = [
   { id:'log-4', data_hora:'2026-03-28 09:15', usuario:'daniel.benedetti@amigosdobem.org.br', acao:'UPDATE', tabela:'projetos',     id_registro:'p-4',         campo:'status',          antes:'Em andamento', depois:'Concluído', obs:'' },
 ];
 
+// ── Comentários do KPI (mural Controladoria ↔ Gestor) — demo ──────
+const COMENTARIOS = [
+  { id:'c-1', id_kpi:'kpi-301', autor_nome:'Roberto Barroso',  autor_email:'roberto.barroso@amigosdobem.org.br',  autor_papel:'Gestor',        texto:'Solicito revisão da meta de Despesas de Produção de maio — o diesel subiu acima do previsto.', criado_em:'2026-05-04T13:20:00' },
+  { id:'c-2', id_kpi:'kpi-301', autor_nome:'Daniel Benedetti', autor_email:'daniel.benedetti@amigosdobem.org.br', autor_papel:'Controladoria', texto:'Recebido, Roberto. Vou analisar o realizado de abril e retorno com a proposta de ajuste.', criado_em:'2026-05-04T15:05:00' },
+];
+
 // ── Estado mútavel (in-memory durante a sessão) ───────────────────
 // Em modo demo os arrays são populados com os dados acima.
 // Em modo live (Supabase) api.js substitui o conteúdo após login.
@@ -205,4 +245,5 @@ let DB = {
   metasMensais: JSON.parse(JSON.stringify(METAS_MENSAIS)),
   projetos:     JSON.parse(JSON.stringify(PROJETOS)),
   logs:         JSON.parse(JSON.stringify(LOGS)),
+  comentarios:  JSON.parse(JSON.stringify(COMENTARIOS)),
 };

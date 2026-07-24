@@ -16,6 +16,7 @@ function logout() { SESSION = null; }
 
 // ── Mapeamento de área para exibição ─────────────────────────────────
 const AREA_LABELS = {
+  'ORGANIZACIONAL':        'Indicadores Organizacionais',
   'ADMINISTRATIVOS':       'Administração',
   'EDUCACAO':              'Educação',
   'AREA_PRODUTIVA':        'Área Produtiva',
@@ -40,18 +41,19 @@ function canSeeAll()    { return isAdmin() || isDiretorN1(); }
 
 function canSeeKPI(kpi) {
   if (!SESSION) return false;
+  // KPI Organizacional (0.00): exclusivo do Administrador
+  if (kpi.area === 'ORGANIZACIONAL') return isAdmin();
   if (canSeeAll()) return true;
   // Responsável vê KPIs onde seu nome aparece no array responsaveis
   return (kpi.responsaveis || []).includes(SESSION.responsavel);
 }
 
+// Somente o Administrador altera qualquer dado do Quadro de KPI (metas e valores).
+// Gestores e Diretoria N1 acessam as metas apenas como visualizadores (ver, ler),
+// sem opção de alterar. A edição de Projetos permanece com os gestores (canEditProject).
 function canEditMeta(meta) {
   if (!SESSION) return false;
-  if (isAdmin()) return true;
-  if (meta.responsavel === SESSION.responsavel) return true;
-  // Co-responsável do KPI também pode editar as metas do KPI
-  const kpi = (DB.kpis || KPIS).find(k => k.id === meta.id_kpi);
-  return !!(kpi && (kpi.responsaveis || []).includes(SESSION.responsavel));
+  return isAdmin();
 }
 
 function canEditProject(proj) {

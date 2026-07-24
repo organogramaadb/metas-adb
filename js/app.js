@@ -5,6 +5,7 @@
 const ANO_ATUAL = 2026;
 let currentKpiId = null;
 let drawerMetaId = null;
+let drawerKpiId = null;   // KPI do drawer aberto — usado pelo mural de comentários
 let drawerCurrentTab = 'dados';
 let editingProjId = null;
 let currentView = 'index';   // 'index' | 'kpi' | 'users'
@@ -32,6 +33,7 @@ function initApp() {
   document.getElementById('hdr-urole').textContent = roleLabels[u.perfil] || 'Responsável';
   document.getElementById('hdr-avatar').textContent = u.nome.charAt(0).toUpperCase();
   renderNav();
+  initNavState();
   showIndex();
 }
 
@@ -73,6 +75,24 @@ function renderNav() {
 
 function toggleArea(el) {
   el.parentElement.classList.toggle('open');
+}
+
+// ── Sidebar retrátil ──────────────────────────────────────────────
+// Recolhe/expande o menu lateral. A preferência é lembrada por sessão
+// no navegador (localStorage). No mobile o menu abre como painel sobreposto.
+function toggleNav() {
+  const app = document.getElementById('app');
+  const collapsed = app.classList.toggle('nav-collapsed');
+  try { localStorage.setItem('metasNavCollapsed', collapsed ? '1' : '0'); } catch (e) {}
+}
+
+function initNavState() {
+  const app = document.getElementById('app');
+  let pref = null;
+  try { pref = localStorage.getItem('metasNavCollapsed'); } catch (e) {}
+  // Sem preferência salva: recolhido no mobile, expandido no desktop
+  if (pref === null) pref = window.innerWidth <= 900 ? '1' : '0';
+  app.classList.toggle('nav-collapsed', pref === '1');
 }
 
 function highlightNav(kpiId) {
@@ -212,7 +232,8 @@ function renderCards(totalPontuacao, resultados, ultimoMes) {
 
 // ── Tabela de Metas ───────────────────────────────────────────────
 function renderMetasTable(resultados, kpi) {
-  const canEdit = isAdmin() || (kpi.responsaveis||[]).includes(SESSION.responsavel);
+  // Somente o Administrador edita as metas do quadro de KPI.
+  const canEdit = isAdmin();
 
   // Botões de seção
   document.getElementById('sec-btns-metas').innerHTML = canEdit
@@ -261,7 +282,7 @@ function renderMetasTable(resultados, kpi) {
 
     const editBtn = canEdit
       ? `<button class="tbl-btn" onclick="openDrawer('${m.id}')">Editar</button>`
-      : '';
+      : `<button class="tbl-btn" onclick="openDrawer('${m.id}')">Ver</button>`;
 
     rows += `<tr>
       <td class="tbl-c" style="color:#bbb;font-weight:700">${m.seq}</td>
@@ -387,8 +408,115 @@ function openDrawer(metaId, kpiId) {
   const delBtn = document.getElementById('btn-meta-delete');
   if (delBtn) delBtn.style.display = (!meta._isNew && canEditMeta(meta)) ? '' : 'none';
 
+  // Modo somente-leitura para quem não é Administrador (gestores/diretoria)
+  applyDrawerReadOnly(!canEditMeta(meta));
+
+  // Mural de comentários do KPI (Controladoria ↔ Gestor)
+  drawerKpiId = meta.id_kpi || currentKpiId;
+  const cInput = document.getElementById('drw-coment-input');
+  if (cInput) cInput.value = '';
+  renderComentarios(drawerKpiId);
+
   document.getElementById('drawer').classList.add('open');
   document.getElementById('drawer-overlay').classList.add('on');
+}
+
+// ── Mural de comentários do KPI ───────────────────────────────────
+// Pequeno histórico rolante de mensagens entre a Controladoria (admin) e o
+// gestor do KPI. Fica na aba Observações e é escrito por ambos os lados —
+// inclusive pelo gestor, que no restante do drawer é apenas visualizador.
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function fmtDataHora(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const p = n => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+async function renderComentarios(idKpi) {
+  const list = document.getElementById('drw-coment-list');
+  if (!list) return;
+  list.innerHTML = '<div class="coment-empty">Carregando…</div>';
+  let coments = [];
+  try { coments = await apiLoadComentarios(idKpi); } catch (e) { coments = []; }
+  // Ignora resposta antiga se o usuário já trocou de KPI no drawer
+  if (idKpi !== drawerKpiId) return;
+  coments.sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em));
+  if (!coments.length) {
+    list.innerHTML = '<div class="coment-empty">Nenhum comentário ainda. Use o campo abaixo para registrar uma solicitação ou observação sobre este KPI.</div>';
+    return;
+  }
+  list.innerHTML = coments.map(c => {
+    const adm = c.autor_papel === 'Controladoria';
+    return `<div class="coment ${adm ? 'adm' : 'gestor'}">
+      <div class="coment-hd">
+        <span class="coment-autor">${escHtml(c.autor_nome)}</span>
+        <span class="coment-papel ${adm ? 'p-adm' : 'p-gestor'}">${adm ? 'Controladoria' : 'Gestor'}</span>
+        <span class="coment-data">${fmtDataHora(c.criado_em)}</span>
+      </div>
+      <div class="coment-txt">${escHtml(c.texto)}</div>
+    </div>`;
+  }).join('');
+  list.scrollTop = list.scrollHeight;
+}
+
+async function addComentario() {
+  const input = document.getElementById('drw-coment-input');
+  if (!input) return;
+  const texto = input.value.trim();
+  if (!texto) { toast('Escreva um comentário antes de enviar.', 'warn'); return; }
+  const idKpi = drawerKpiId;
+  const kpi = KPIS.find(k => k.id === idKpi);
+  if (!kpi || !canSeeKPI(kpi)) { toast('Sem permissão para comentar neste KPI.', 'err'); return; }
+
+  const papel = isAdmin() ? 'Controladoria' : 'Gestor';
+  const payload = {
+    id_kpi: idKpi,
+    autor_nome:  SESSION.nome,
+    autor_email: SESSION.email,
+    autor_papel: papel,
+    texto,
+  };
+  const sendBtn = document.getElementById('drw-coment-send');
+  if (sendBtn) sendBtn.disabled = true;
+  try {
+    const row = await apiAddComentario(payload);
+    // Em modo live o cache é opcional; apenas re-renderiza a partir do banco
+    if (!isLiveMode() && row && !DB.comentarios.some(c => c.id === row.id)) {
+      // apiAddComentario já empurrou em demo; nada a fazer
+    }
+    input.value = '';
+    await renderComentarios(idKpi);
+    toast('💬 Comentário enviado.', 'ok');
+  } catch (e) {
+    toast('Erro ao enviar comentário: ' + (e.message || e), 'err');
+  } finally {
+    if (sendBtn) sendBtn.disabled = false;
+  }
+}
+
+// Ativa/desativa o modo somente-leitura do drawer de meta.
+// Gestores abrem o drawer para VER os lançamentos e ler a descrição (como o card),
+// mas sem qualquer campo editável nem botão de salvar/excluir.
+function applyDrawerReadOnly(readOnly) {
+  const drawer = document.getElementById('drawer');
+  // .no-ro fica de fora: o campo de comentário do KPI é liberado mesmo p/ gestores
+  drawer.querySelectorAll('.drw-body input:not(.no-ro), .drw-body select:not(.no-ro), .drw-body textarea:not(.no-ro)').forEach(el => {
+    if (el.tagName === 'SELECT') el.disabled = readOnly;
+    else el.readOnly = readOnly;
+    el.classList.toggle('ro', readOnly);
+  });
+  const saveBtn = drawer.querySelector('.btn-save');
+  if (saveBtn) saveBtn.style.display = readOnly ? 'none' : '';
+  const banner = document.getElementById('drw-ro-banner');
+  if (banner) banner.style.display = readOnly ? 'block' : 'none';
+  if (readOnly) document.getElementById('drw-title').textContent = 'Visualizar Meta';
 }
 
 function buildMonthGrids(meta) {

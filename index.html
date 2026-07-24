@@ -45,6 +45,7 @@
 
   <!-- Header -->
   <header>
+    <button class="h-nav-toggle" onclick="toggleNav()" title="Mostrar/ocultar menu lateral" aria-label="Mostrar ou ocultar o menu lateral">☰</button>
     <img class="h-logo" id="hdr-logo" alt="Logo">
     <div class="h-names">
       <div class="h-name">Acompanhamento de Metas</div>
@@ -258,6 +259,9 @@
   </div>
   <div class="drw-body">
 
+    <!-- Banner somente-leitura (gestores/diretoria) -->
+    <div class="drw-ro-banner" id="drw-ro-banner">🔒 Modo somente leitura — apenas o Administrador pode alterar os dados do KPI. Para solicitar revisão de números ou inclusão de meta, use a seção <b>Projetos e Iniciativas</b>.</div>
+
     <!-- Tab: Dados da Meta -->
     <div id="drw-tab-dados">
       <div class="fg">
@@ -351,16 +355,29 @@
     <!-- Tab: Observações -->
     <div id="drw-tab-obs" style="display:none">
       <div class="fg">
-        <div class="fgt">Observações da Meta</div>
+        <div class="fgt">Observações internas da Meta (Controladoria)</div>
         <div class="fr s1">
           <div class="fi"><label>Observações</label>
-            <textarea id="drw-obs" rows="5" placeholder="Registre comentários, justificativas ou pontos de atenção sobre esta meta..." class="dirty"></textarea>
+            <textarea id="drw-obs" rows="3" placeholder="Nota interna sobre esta meta (visível a todos, editável só pelo Administrador)..." class="dirty"></textarea>
           </div>
         </div>
         <div class="fr s1">
           <div class="fi"><label>Última Atualização</label>
             <input type="text" id="drw-ult-at" readonly>
           </div>
+        </div>
+      </div>
+
+      <!-- Mural de comentários do KPI — comunicação Gestor ↔ Controladoria -->
+      <div class="fg">
+        <div class="fgt">Comentários do KPI — Controladoria ↔ Gestor</div>
+        <p class="coment-sub">Use este espaço para solicitar revisão de número, inclusão de meta/KPI ou registrar um combinado. O histórico fica visível para o gestor do KPI e para a Controladoria.</p>
+        <div class="coment-list" id="drw-coment-list">
+          <div class="coment-empty">Carregando…</div>
+        </div>
+        <div class="coment-new">
+          <textarea id="drw-coment-input" class="no-ro" rows="2" placeholder="Escreva um comentário sobre este KPI…"></textarea>
+          <button type="button" class="btn-coment no-ro" id="drw-coment-send" onclick="addComentario()">Enviar</button>
         </div>
       </div>
     </div>
@@ -560,10 +577,10 @@
 ════════════════════════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- ?v= força o navegador a buscar a versão nova após cada publicação (cache-busting). Incrementar a cada deploy. -->
-<script src="js/data.js?v=20260624a"></script>
-<script src="js/engine.js?v=20260624a"></script>
-<script src="js/api.js?v=20260624a"></script>
-<script src="js/app.js?v=20260624a"></script>
+<script src="js/data.js?v=20260723b"></script>
+<script src="js/engine.js?v=20260723b"></script>
+<script src="js/api.js?v=20260723b"></script>
+<script src="js/app.js?v=20260723b"></script>
 
 </body>
 </html>
