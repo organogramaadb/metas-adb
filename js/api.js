@@ -183,7 +183,12 @@ async function loadData() {
       data_atualizacao:    p.atualizado_em ? new Date(p.atualizado_em).toLocaleDateString('pt-BR') : '',
     }));
 
-    DB.logs = logs || [];
+    // Logs vindos do servidor já estão persistidos — marca como sincronizados
+    // para não serem reenviados. Sem isso, todo save (meta/projeto/KPI/usuário)
+    // reenviava o histórico de auditoria inteiro de volta ao banco a cada
+    // clique em Salvar (causava dezenas/centenas de requisições por save,
+    // travando a aba e dando a impressão de "não salva").
+    DB.logs = (logs || []).map(l => ({ ...l, _synced: true }));
 
     // Sincroniza array global KPIS (usado por engine.js / app.js)
     KPIS.length = 0;

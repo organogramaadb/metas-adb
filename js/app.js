@@ -178,6 +178,11 @@ function showKPI(kpiId) {
   document.getElementById('kpi-area-hd').textContent = areaLabel(kpi.area);
   document.getElementById('btn-edit-kpi').style.display = isAdmin() ? '' : 'none';
 
+  // Cabeçalho de impressão (usado só quando o usuário clica em "Imprimir Meta")
+  document.getElementById('print-header-tit').textContent = `${kpi.codigo} · ${kpi.nome}`;
+  document.getElementById('print-header-meta').textContent =
+    `Responsável: ${kpiResps(kpi)} · Diretoria: ${kpi.diretoria} · Gerado em ${new Date().toLocaleDateString('pt-BR')}`;
+
   const { totalPontuacao, resultados, ultimoMes } = calcKPI(kpiId, ANO_ATUAL);
   document.getElementById('kpi-periodo-hd').textContent =
     ultimoMes > 0 ? `Jan – ${MESES_ABREV[ultimoMes-1]} 2026 (acumulado)` : 'Jan – Dez 2026';
@@ -402,7 +407,10 @@ function openDrawer(metaId, kpiId) {
   document.getElementById('drw-ult-at').value  = meta.ult_at || '—';
 
   buildMonthGrids(meta);
-  switchDrawerTab('dados', document.querySelector('.drw-tab.on'));
+  // Sempre força a aba "Dados da Meta" como ativa ao abrir — sem passar um botão
+  // "atual", que poderia sobrar marcado de uma sessão anterior do drawer (era a
+  // causa do destaque aparecer em "Realizado Mensal" com o conteúdo errado).
+  switchDrawerTab('dados');
 
   // Botão excluir: só para meta existente (não nova) e com permissão de edição
   const delBtn = document.getElementById('btn-meta-delete');
@@ -545,6 +553,52 @@ function buildMonthGrids(meta) {
   document.getElementById('drw-real-grid').innerHTML = realHtml;
   updateDrawerResumo(meta);
 }
+
+// ── Colar valores em lote (Ctrl+V) nos campos de mês ────────────────
+// Copie uma coluna vertical de 12 valores de uma planilha (Jan a Dez, na
+// mesma ordem dos campos) e cole em qualquer mês do grid: os valores são
+// distribuídos a partir do campo colado até dezembro, um por linha — sem
+// precisar digitar mês a mês. Um valor comum (colagem de célula única)
+// continua funcionando normalmente, sem interferência.
+function handleMonthPaste(e) {
+  const target = e.target;
+  if (!target || !target.matches('input[data-mes]') || target.readOnly) return;
+  const clip = e.clipboardData || window.clipboardData;
+  if (!clip) return;
+  const raw = clip.getData('text');
+  if (raw == null) return;
+
+  let linhas = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  // remove a linha vazia que sobra ao copiar uma coluna inteira do Excel/Sheets
+  if (linhas.length > 1 && linhas[linhas.length - 1] === '') linhas.pop();
+  // uma única linha com tabulações = colou uma linha horizontal — separa por elas também
+  if (linhas.length === 1 && linhas[0].indexOf('\t') !== -1) linhas = linhas[0].split('\t');
+  // valor único: deixa o navegador colar normalmente no campo focado
+  if (linhas.length <= 1) return;
+
+  e.preventDefault();
+  const grid = target.closest('.months-list');
+  if (!grid) return;
+  const mesInicial = parseInt(target.dataset.mes, 10);
+
+  let ultimoInput = target;
+  for (let i = 0; i < linhas.length; i++) {
+    const mes = mesInicial + i;
+    if (mes > 12) break;
+    const inp = grid.querySelector(`input[data-mes="${mes}"]`);
+    if (!inp) continue;
+    inp.value = linhas[i].trim();
+    if (inp.dataset.type === 'real') inp.classList.toggle('has-val', inp.value !== '');
+    ultimoInput = inp;
+  }
+  ultimoInput.focus();
+}
+(function setupMonthPasteHandlers() {
+  const gridMeta = document.getElementById('drw-meta-grid');
+  const gridReal = document.getElementById('drw-real-grid');
+  if (gridMeta) gridMeta.addEventListener('paste', handleMonthPaste);
+  if (gridReal) gridReal.addEventListener('paste', handleMonthPaste);
+})();
 
 function updateDrawerResumo(meta) {
   const { metaAc, realAc, atingimento, scoringAt, pontuacao, ultimoMes } = calcMeta(meta, ANO_ATUAL);
@@ -715,6 +769,21 @@ function deleteMetaFromDrawer() {
   document.getElementById('drawer-overlay').classList.remove('on');
   drawerMetaId = null;
   deleteMeta(id);
+}
+
+// ── Imprimir Meta (PDF via caixa de impressão do navegador) ────────
+// Usa window.print() com CSS dedicado (@media print no style.css) para gerar
+// uma versão em retrato só com os cards e tabelas do KPI atual — menu lateral,
+// cabeçalho e botões somem. O usuário escolhe "Salvar como PDF" no destino.
+function imprimirKPI() {
+  if (!currentKpiId) return;
+  const kpi = KPIS.find(k => k.id === currentKpiId);
+  const originalTitle = document.title;
+  // Muitos navegadores usam document.title como nome padrão do arquivo ao salvar em PDF
+  if (kpi) document.title = `Metas ${kpi.codigo} - ${kpi.nome}`.replace(/\s+/g, ' ').trim();
+  window.print();
+  const restoreTitle = () => { document.title = originalTitle; window.removeEventListener('afterprint', restoreTitle); };
+  window.addEventListener('afterprint', restoreTitle);
 }
 
 // ── Modal Editar KPI ──────────────────────────────────────────────

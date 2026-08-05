@@ -141,6 +141,10 @@ header{height:var(--hh);background:#111;display:flex;align-items:center;padding:
 .btn-back:hover{border-color:#999;color:#111}
 .btn-edit-kpi{background:#fff;border:1px solid #c8a84b;border-radius:4px;padding:7px 12px;font-size:12px;color:#8a6800;cursor:pointer;white-space:nowrap}
 .btn-edit-kpi:hover{background:#fdf6e3;border-color:#8a6800}
+.btn-print-kpi{background:#fff;border:1px solid #ddd;border-radius:4px;padding:7px 12px;font-size:12px;color:#555;cursor:pointer;white-space:nowrap}
+.btn-print-kpi:hover{border-color:#999;color:#111}
+/* Cabeçalho exclusivo de impressão — fica oculto na tela, só aparece no PDF */
+#print-header{display:none}
 
 /* Cards superiores */
 .kpi-cards-row{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
@@ -380,9 +384,39 @@ table.proj-tbl tbody tr:hover td{background:#fafafa}
 .usr-kpi-check span{color:#666}
 
 @media print{
-  #lo,header,#sb,#nav,#drawer,#drawer-overlay,.overlay,#toast,.sec-btns,.khd-btns{display:none!important}
+  @page{size:portrait;margin:12mm 10mm}
+  html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#fff}
+  #lo,header,#sb,#nav,#drawer,#drawer-overlay,.overlay,#toast,.sec-btns,.khd-btns,.h-nav-toggle{display:none!important}
   body,html{overflow:visible;height:auto}
-  #app{height:auto}
-  #main,#content{overflow:visible;height:auto}
+  #app{height:auto;display:block}
+  #main{display:block;overflow:visible;height:auto}
+  #content{overflow:visible;height:auto;padding:0!important}
+  #view-index{display:none!important}
   .section{break-inside:avoid}
+
+  /* Cabeçalho de impressão — some na tela (#print-header{display:none} acima), aparece só aqui */
+  #print-header{display:block}
+  #print-header .ph-org{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#888}
+  #print-header .ph-tit{font-size:17px;font-weight:700;color:#111;margin-top:2px}
+  #print-header .ph-meta{font-size:10px;color:#888;margin-top:4px;padding-bottom:10px;border-bottom:2px solid #111}
+
+  /* Cabeçalho do KPI: sem sombra, mais compacto no papel */
+  .kpi-header{box-shadow:none;border:none;padding:12px 0;margin-bottom:10px}
+  .khd-name{font-size:18px}
+
+  /* Cards: sem sombra/hover, evita quebrar um card ao meio entre páginas */
+  .kpi-cards-row{gap:8px}
+  .card-total,.card-meta{box-shadow:none!important;break-inside:avoid;cursor:default}
+
+  /* Tabelas: precisam caber na largura da folha retrato (~180mm) */
+  .tbl-wrap{overflow-x:visible!important}
+  table.tbl,table.proj-tbl{font-size:9.5px}
+  table.tbl th,table.tbl td,table.proj-tbl th,table.proj-tbl td{padding:4px 5px}
+  /* Coluna Ações não faz sentido no papel — some junto com os botões que ela contém */
+  table.tbl th:last-child,table.tbl td:last-child,
+  table.proj-tbl th:last-child,table.proj-tbl td:last-child{display:none}
+  .tbl-btn,.tbl-btn-del{display:none!important}
+  table.tbl tr,table.proj-tbl tr{break-inside:avoid}
+
+  a{color:inherit;text-decoration:none}
 }
