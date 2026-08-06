@@ -305,6 +305,17 @@ function renderMetasTable(resultados, kpi) {
       <td class="tbl-c">${editBtn}</td>
     </tr>`;
   }
+
+  // Totalizador da coluna Peso — mostra rápido se a distribuição bate 100%
+  // (sem travar nada aqui; a trava de verdade fica no campo do drawer)
+  const totalPeso = resultados.reduce((s, r) => s + (parseFloat(r.meta.peso) || 0), 0);
+  const pesoOk = Math.abs(totalPeso - 1) < 0.001;
+  rows += `<tr class="tbl-total-row">
+    <td colspan="3" class="tbl-total-label">Total de Peso das Metas</td>
+    <td class="tbl-peso tbl-peso-total ${pesoOk ? 'ok' : 'err'}">${(totalPeso * 100).toFixed(0)}%</td>
+    <td colspan="6"></td>
+  </tr>`;
+
   document.getElementById('metas-tbody').innerHTML = rows;
 }
 
@@ -362,8 +373,12 @@ function openDrawer(metaId, kpiId) {
     if (!kpiId) return;
     const kpi = KPIS.find(k => k.id === kpiId);
     if (!kpi) return;
-    const existingSeqs = DB.metas.filter(m => m.id_kpi === kpiId).map(m => m.seq);
+    const existingMetasKpi = DB.metas.filter(m => m.id_kpi === kpiId && m.ativo);
+    const existingSeqs = existingMetasKpi.map(m => m.seq);
     const nextSeq = existingSeqs.length ? Math.max(...existingSeqs) + 1 : 1;
+    // Sugestão de peso padrão: 1 ÷ quantidade de metas do KPI (incluindo esta nova).
+    // Fica editável — é só ponto de partida, não trava nada na criação.
+    const pesoSugerido = Math.round((1 / (existingMetasKpi.length + 1)) * 100) / 100;
     // Gera UUID válido para o banco (crypto.randomUUID disponível em browsers modernos)
     const newId = (typeof crypto !== 'undefined' && crypto.randomUUID)
       ? crypto.randomUUID()
@@ -375,8 +390,9 @@ function openDrawer(metaId, kpiId) {
       id: newId, id_kpi: kpiId, seq: nextSeq,
       nome: '', descricao: '', responsavel: (kpi.responsaveis||[])[0] || '',
       diretoria: kpi.diretoria || '', tipo_formato: 'percentual',
-      unidade_medida: '%', bom_quando: 'maior', peso: 0.5,
+      unidade_medida: '%', bom_quando: 'maior', peso: pesoSugerido,
       formula_atingimento: 'real_sobre_meta', tipo_acumulado: 'soma',
+      acumulado_meta_manual: null, acumulado_realizado_manual: null,
       status: 'Ativa', obs: '', ult_at: new Date().toLocaleDateString('pt-BR'), ativo: true,
       _isNew: true
     };
@@ -515,7 +531,11 @@ async function addComentario() {
 function applyDrawerReadOnly(readOnly) {
   const drawer = document.getElementById('drawer');
   // .no-ro fica de fora: o campo de comentário do KPI é liberado mesmo p/ gestores
-  drawer.querySelectorAll('.drw-body input:not(.no-ro), .drw-body select:not(.no-ro), .drw-body textarea:not(.no-ro)').forEach(el => {
+  // .acum-input também fica de fora daqui: seu readOnly combina modo Entrada
+  // Manual + permissão de edição (canEditMeta), decidido só por recalcDrawerLive()
+  // — que já checa a permissão direto, então funciona independente da ordem
+  // de chamada entre essa função e buildMonthGrids/recalcDrawerLive.
+  drawer.querySelectorAll('.drw-body input:not(.no-ro):not(.acum-input), .drw-body select:not(.no-ro), .drw-body textarea:not(.no-ro)').forEach(el => {
     if (el.tagName === 'SELECT') el.disabled = readOnly;
     else el.readOnly = readOnly;
     el.classList.toggle('ro', readOnly);
@@ -541,17 +561,131 @@ function buildMonthGrids(meta) {
     const rvDisplay = rv !== '' ? String(rv).replace('.', ',') : '';
     metaHtml += `<div class="mi">
       <label>${MESES_ABREV[mes-1]}</label>
-      <input type="text" data-mes="${mes}" data-type="meta" value="${mvDisplay}" placeholder="—">
+      <input type="text" data-mes="${mes}" data-type="meta" value="${mvDisplay}" placeholder="—" oninput="recalcDrawerLive()">
     </div>`;
     realHtml += `<div class="mi">
       <label>${MESES_ABREV[mes-1]}</label>
       <input type="text" data-mes="${mes}" data-type="real" value="${rvDisplay}" class="${rvDisplay?'has-val':''}" placeholder="—"
-        oninput="this.classList.toggle('has-val', this.value!='')">
+        oninput="this.classList.toggle('has-val', this.value!=''); recalcDrawerLive()">
     </div>`;
   }
   document.getElementById('drw-meta-grid').innerHTML = metaHtml;
   document.getElementById('drw-real-grid').innerHTML = realHtml;
-  updateDrawerResumo(meta);
+
+  // Linha "Acumulado" — mesmo padrão visual do mês, mas destacada. Editável
+  // só quando Acumulado = Entrada Manual; nos outros modos fica travada e
+  // mostra o valor calculado ao vivo (recalcDrawerLive cuida disso).
+  const mvAcum = meta.acumulado_meta_manual != null ? String(meta.acumulado_meta_manual).replace('.', ',') : '';
+  const rvAcum = meta.acumulado_realizado_manual != null ? String(meta.acumulado_realizado_manual).replace('.', ',') : '';
+  document.getElementById('drw-meta-acum-wrap').innerHTML = `<div class="mi mi-acum">
+    <label>Acum.</label>
+    <input type="text" class="acum-input" id="drw-meta-acum-input" value="${mvAcum}" placeholder="—" oninput="recalcDrawerLive()">
+  </div>`;
+  document.getElementById('drw-real-acum-wrap').innerHTML = `<div class="mi mi-acum">
+    <label>Acum.</label>
+    <input type="text" class="acum-input" id="drw-real-acum-input" value="${rvAcum}" placeholder="—" oninput="recalcDrawerLive()">
+  </div>`;
+
+  recalcDrawerLive();
+  updatePesoTotalHint();
+}
+
+// Formata um número calculado de volta pro padrão de texto dos campos
+// (vírgula decimal, arredondado — evita cauda de ponto flutuante tipo
+// "195000.00000000003" aparecendo num campo travado).
+function fmtInputVal(n, tipoFormato) {
+  if (n == null || isNaN(n)) return '';
+  const rounded = tipoFormato === 'inteiro' ? Math.round(n) : Math.round(n * 100) / 100;
+  return String(rounded).replace('.', ',');
+}
+
+// ── Recálculo ao vivo do Acumulado (Meta Mensal + Realizado Mensal) ────────
+// Roda a cada tecla digitada em qualquer mês (ou nos próprios campos
+// "Acum." em modo manual) e a cada troca de Tipo de Formato/Bom Quando/
+// Fórmula/Acumulado — sem precisar salvar para ver o resultado mudar.
+// Espelha a mesma lógica de calcMeta() em engine.js, mas lendo os valores
+// direto do formulário (ainda não salvos) em vez do banco.
+function recalcDrawerLive() {
+  if (!drawerMetaId) return;
+  const meta = DB.metas.find(m => m.id === drawerMetaId);
+  if (!meta) return;
+
+  const tipoFormato   = document.getElementById('drw-formato').value;
+  const bomQuando     = document.getElementById('drw-bom').value;
+  const formula       = document.getElementById('drw-formula').value;
+  const tipoAcumulado = document.getElementById('drw-acumulado').value;
+  const peso          = parseFloat(document.getElementById('drw-peso').value) || 0;
+
+  const isManual = tipoAcumulado === 'manual';
+  // Combina as duas travas: quem não pode editar a meta (gestor) nunca edita
+  // aqui, mesmo em modo manual; quem pode editar só digita quando é manual —
+  // nos outros modos o campo fica travado mostrando o valor calculado ao vivo.
+  const semPermissao = !canEditMeta(meta);
+  const acumEditavel = isManual && !semPermissao;
+  const metaAcumInput = document.getElementById('drw-meta-acum-input');
+  const realAcumInput = document.getElementById('drw-real-acum-input');
+  [metaAcumInput, realAcumInput].forEach(inp => {
+    if (!inp) return;
+    inp.readOnly = !acumEditavel;
+    inp.classList.toggle('acum-locked', !acumEditavel);
+  });
+
+  // Lê os valores mensais direto do formulário (reflete o que está sendo
+  // digitado agora, não o que já está salvo no banco).
+  const metaVals = {}, realVals = {};
+  document.querySelectorAll('#drw-meta-grid input[data-mes]').forEach(inp => {
+    metaVals[parseInt(inp.dataset.mes, 10)] = parseInput(inp.value, tipoFormato);
+  });
+  document.querySelectorAll('#drw-real-grid input[data-mes]').forEach(inp => {
+    realVals[parseInt(inp.dataset.mes, 10)] = parseInput(inp.value, tipoFormato);
+  });
+  let ultimoMes = 0;
+  for (let mes = 1; mes <= 12; mes++) if (realVals[mes] != null) ultimoMes = mes;
+
+  let metaAc = null, realAc = null;
+  if (isManual) {
+    metaAc = metaAcumInput ? parseInput(metaAcumInput.value, tipoFormato) : null;
+    realAc = realAcumInput ? parseInput(realAcumInput.value, tipoFormato) : null;
+  } else if (ultimoMes > 0) {
+    let metaSum = 0, realSum = 0, nMeta = 0, nReal = 0;
+    for (let mes = 1; mes <= ultimoMes; mes++) {
+      if (metaVals[mes] != null) { metaSum += metaVals[mes]; nMeta++; }
+      if (realVals[mes] != null) { realSum += realVals[mes]; nReal++; }
+    }
+    metaAc = tipoAcumulado === 'media' ? (nMeta > 0 ? metaSum / nMeta : 0) : metaSum;
+    realAc = tipoAcumulado === 'media' ? (nReal > 0 ? realSum / nReal : 0) : realSum;
+    if (metaAcumInput) metaAcumInput.value = fmtInputVal(metaAc, tipoFormato);
+    if (realAcumInput) realAcumInput.value = fmtInputVal(realAc, tipoFormato);
+  } else {
+    if (metaAcumInput) metaAcumInput.value = '';
+    if (realAcumInput) realAcumInput.value = '';
+  }
+
+  // Atingimento / pontuação — mesma regra de calcMeta()
+  let atingimento = null, scoringAt = null, pontuacao = 0;
+  if (metaAc != null && realAc != null) {
+    if (metaAc !== 0 && realAc !== 0) {
+      atingimento = formula === 'real_sobre_meta' ? realAc / metaAc : metaAc / realAc;
+      scoringAt   = bomQuando === 'maior' ? realAc / metaAc : metaAc / realAc;
+    } else if (metaAc === 0 && realAc === 0) {
+      atingimento = 1; scoringAt = 1;
+    }
+    if (scoringAt !== null) {
+      if (scoringAt >= 1.0) pontuacao = peso;
+      else if (scoringAt >= 0.9) pontuacao = peso * ((scoringAt - 0.9) / 0.1);
+    }
+  }
+
+  const cls = scoreClass(scoringAt);
+  const at = atingimento !== null ? fmtPct(atingimento) : '—';
+  const resumoEl = document.getElementById('drw-resumo');
+  if (resumoEl) resumoEl.innerHTML = `
+    <b>Meta acumulada:</b> ${metaAc != null ? fmt(metaAc, tipoFormato) : '—'}<br>
+    <b>Realizado acumulado:</b> ${realAc != null ? fmt(realAc, tipoFormato) : '—'}<br>
+    <b>Atingimento:</b> <span style="color:var(--${cls==='ok'?'ok':cls==='warn'?'warn':'err'})">${at}</span><br>
+    <b>Pontuação ponderada:</b> ${(pontuacao*100).toFixed(1)}% (peso ${(peso*100).toFixed(0)}%)<br>
+    <b>Último mês apurado:</b> ${ultimoMes > 0 ? MESES_ABREV[ultimoMes-1]+'/2026' : 'Nenhum'}
+  `;
 }
 
 // ── Colar valores em lote (Ctrl+V) nos campos de mês ────────────────
@@ -600,17 +734,30 @@ function handleMonthPaste(e) {
   if (gridReal) gridReal.addEventListener('paste', handleMonthPaste);
 })();
 
-function updateDrawerResumo(meta) {
-  const { metaAc, realAc, atingimento, scoringAt, pontuacao, ultimoMes } = calcMeta(meta, ANO_ATUAL);
-  const at = atingimento !== null ? fmtPct(atingimento) : '—';
-  const cls = scoreClass(scoringAt);
-  document.getElementById('drw-resumo').innerHTML = `
-    <b>Meta acumulada:</b> ${fmt(metaAc, meta.tipo_formato)}<br>
-    <b>Realizado acumulado:</b> ${fmt(realAc, meta.tipo_formato)}<br>
-    <b>Atingimento:</b> <span style="color:var(--${cls==='ok'?'ok':cls==='warn'?'warn':'err'})">${at}</span><br>
-    <b>Pontuação ponderada:</b> ${(pontuacao*100).toFixed(1)}% (peso ${(meta.peso*100).toFixed(0)}%)<br>
-    <b>Último mês apurado:</b> ${ultimoMes > 0 ? MESES_ABREV[ultimoMes-1]+'/2026' : 'Nenhum'}
-  `;
+// ── Trava inteligente de PESO ───────────────────────────────────────────
+// Mostra, ao vivo, quanto o KPI somaria de peso se este valor for salvo —
+// não bloqueia digitação (o rebalanceamento de verdade acontece no save,
+// ver saveDrawer). Só avisa antes de você clicar em Salvar.
+function updatePesoTotalHint() {
+  if (!drawerMetaId) return;
+  const hintEl = document.getElementById('drw-peso-hint');
+  if (!hintEl) return;
+  const kpiId = currentKpiId;
+  if (!kpiId) { hintEl.textContent = ''; return; }
+
+  const pesoAtual = parseFloat(document.getElementById('drw-peso').value) || 0;
+  const outrasMetas = DB.metas.filter(m => m.id_kpi === kpiId && m.ativo && m.id !== drawerMetaId);
+  const totalOutras = outrasMetas.reduce((s, m) => s + (parseFloat(m.peso) || 0), 0);
+  const totalComEsta = totalOutras + pesoAtual;
+  const pct = (totalComEsta * 100).toFixed(0);
+
+  if (totalComEsta > 1.001) {
+    hintEl.innerHTML = `⚠ Total do KPI ficaria em <b>${pct}%</b> — ao salvar, as outras metas serão reduzidas proporcionalmente para fechar em 100%.`;
+    hintEl.style.color = 'var(--warn)';
+  } else {
+    hintEl.textContent = `Total do KPI com este peso: ${pct}%`;
+    hintEl.style.color = '#999';
+  }
 }
 
 function switchDrawerTab(tab, btn) {
@@ -668,6 +815,42 @@ function saveDrawer() {
   meta.obs          = document.getElementById('drw-obs').value;
   meta.ult_at       = new Date().toLocaleDateString('pt-BR');
 
+  // Acumulado manual — só guarda valor quando o modo é "Entrada Manual".
+  // Nos outros modos fica null: o valor exibido é sempre recalculado, não
+  // faz sentido guardar um número antigo que confundiria se o modo mudar depois.
+  if (meta.tipo_acumulado === 'manual') {
+    const metaAcumInput = document.getElementById('drw-meta-acum-input');
+    const realAcumInput = document.getElementById('drw-real-acum-input');
+    meta.acumulado_meta_manual      = metaAcumInput ? parseInput(metaAcumInput.value, meta.tipo_formato) : null;
+    meta.acumulado_realizado_manual = realAcumInput ? parseInput(realAcumInput.value, meta.tipo_formato) : null;
+  } else {
+    meta.acumulado_meta_manual = null;
+    meta.acumulado_realizado_manual = null;
+  }
+
+  // Trava inteligente de PESO — se a soma do KPI ultrapassaria 100% com este
+  // valor, reduz as OUTRAS metas do mesmo KPI proporcionalmente ao peso atual
+  // de cada uma, para fechar em 100%. Nunca deixa peso negativo; se as outras
+  // já estiverem muito baixas para absorver o excesso, só segue (o totalizador
+  // da tela principal continua avisando visualmente).
+  const metasRebalanceadas = [];
+  if (meta.id_kpi) {
+    const outrasMetas = DB.metas.filter(m => m.id_kpi === meta.id_kpi && m.ativo && m.id !== meta.id);
+    const totalOutras = outrasMetas.reduce((s, m) => s + (parseFloat(m.peso) || 0), 0);
+    const excesso = (meta.peso + totalOutras) - 1;
+    if (excesso > 0.001 && totalOutras > 0) {
+      for (const m of outrasMetas) {
+        const reducao = excesso * ((parseFloat(m.peso) || 0) / totalOutras);
+        const novoPeso = Math.max(0, Math.round((m.peso - reducao) * 1000) / 1000);
+        if (novoPeso !== m.peso) {
+          addLog('UPDATE', 'metas', m.id, 'peso', m.peso, novoPeso);
+          m.peso = novoPeso;
+          metasRebalanceadas.push(m);
+        }
+      }
+    }
+  }
+
   // Salva valores mensais (meta e realizado)
   const metaInputs = document.querySelectorAll('#drw-meta-grid input');
   const realInputs = document.querySelectorAll('#drw-real-grid input');
@@ -704,7 +887,10 @@ function saveDrawer() {
 
   delete meta._isNew;   // marca como persistida antes de fechar
   closeDrawer();
-  toast(isNew ? '✅ Nova meta criada com sucesso!' : '✅ Meta salva com sucesso!', 'ok');
+  const msgRebal = metasRebalanceadas.length
+    ? ` Peso de ${metasRebalanceadas.length} outra${metasRebalanceadas.length>1?'s':''} meta${metasRebalanceadas.length>1?'s':''} ajustado p/ manter o total em 100%.`
+    : '';
+  toast((isNew ? '✅ Nova meta criada com sucesso!' : '✅ Meta salva com sucesso!') + msgRebal, 'ok');
 
   // Persiste no servidor. isNew foi capturado ANTES do delete _isNew acima,
   // por isso é passado explicitamente (senão a API faria UPDATE de meta inexistente).
@@ -718,6 +904,8 @@ function saveDrawer() {
         return Promise.all(mensaisDaMeta.map(reg => apiSaveMetaMensal(reg).catch(() => {})));
       })
       .catch(err => toast('Erro ao salvar meta: ' + err.message, 'err'));
+    // Metas irmãs rebalanceadas por causa da trava de 100% de peso
+    metasRebalanceadas.forEach(m => apiSaveMeta(m, false).catch(() => {}));
     // Logs
     DB.logs.filter(l => !l._synced).forEach(l => {
       l._synced = true;

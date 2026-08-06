@@ -198,6 +198,12 @@ table.tbl tbody tr:hover td{background:#fafafa}
 .tbl-pct.err{color:var(--err)}
 .tbl-pts{text-align:center;font-weight:700;color:#555}
 .tbl-peso{text-align:center;color:#999}
+/* Linha totalizadora do Peso — mostra rápido se a distribuição das metas bate 100% */
+.tbl-total-row td{background:#fafafa;border-top:2px solid #e5e5e5;padding-top:10px;padding-bottom:10px}
+.tbl-total-label{text-align:right;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.04em}
+.tbl-peso-total{font-weight:800;font-size:13px}
+.tbl-peso-total.ok{color:var(--ok)}
+.tbl-peso-total.err{color:var(--err)}
 .tbl-btn{background:#fff;border:1px solid #ddd;border-radius:3px;padding:3px 8px;font-size:10px;color:#555;cursor:pointer}
 .tbl-btn:hover{border-color:#999;color:#111}
 .tbl-btn-del{background:transparent;border:1px solid #fca5a5;border-radius:3px;padding:3px 7px;font-size:11px;color:#dc2626;cursor:pointer;margin-left:4px;line-height:1}
@@ -276,6 +282,12 @@ table.tbl tbody tr:hover td{background:#fafafa}
 .mi input:focus{border-color:#111;outline:none}
 .mi input.has-val{background:#f8fff8;border-color:#c0ddc0}
 .mi input[data-type="meta"]{background:#fafafa}
+/* Linha "Acumulado" acima de Jan — editável em modo Entrada Manual, travada
+   (mostrando o valor calculado ao vivo) nos outros modos de Acumulado */
+.mi-acum{padding-bottom:6px;margin-bottom:6px;border-bottom:1px dashed #ddd}
+.mi-acum label{color:#8a6800;width:auto;min-width:28px}
+.mi-acum input{font-weight:700;border-color:#e0d9a0;background:#fffef5}
+.mi-acum input.acum-locked{font-weight:600;background:#f7f7f7;color:#666;border-color:#eee;cursor:default}
 
 /* Botões do drawer */
 .btn-save{flex:1;background:#111;color:#fff;border:none;border-radius:4px;padding:9px;font-size:13px;font-weight:600;cursor:pointer}

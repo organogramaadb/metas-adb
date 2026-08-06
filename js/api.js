@@ -240,6 +240,10 @@ async function apiSaveMeta(payload, forceNew = false) {
     peso:                parseFloat(payload.peso) || 0,
     formula_atingimento: payload.formula_atingimento || 'real_sobre_meta',
     tipo_acumulado:      payload.tipo_acumulado || 'soma',
+    // Entrada manual do acumulado — null quando o modo não é "manual" ou o campo
+    // ficou vazio (deixa explícito que não há override, evita número velho "fantasma")
+    acumulado_meta_manual:      (payload.acumulado_meta_manual      != null && payload.acumulado_meta_manual      !== '') ? parseFloat(payload.acumulado_meta_manual)      : null,
+    acumulado_realizado_manual: (payload.acumulado_realizado_manual != null && payload.acumulado_realizado_manual !== '') ? parseFloat(payload.acumulado_realizado_manual) : null,
     status:              STATUS_DB[payload.status] || payload.status || 'ativa',
     ano:                 payload.ano || 2026,
     ativo:               payload.ativo !== false,

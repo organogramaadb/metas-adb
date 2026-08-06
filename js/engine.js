@@ -136,9 +136,12 @@ function getMesesComRealizado(idMeta, ano) {
  * Calcula os acumulados e atingimento de uma meta.
  *
  * Campos da meta usados:
- *   tipo_acumulado      — 'soma' (padrão) | 'media'
- *     soma  → acumula todos os meses até ultimoMes (bom para volumes, despesas totais)
- *     media → média dos meses (bom para percentuais, valores unitários)
+ *   tipo_acumulado      — 'soma' (padrão) | 'media' | 'manual'
+ *     soma   → acumula todos os meses até ultimoMes (bom para volumes, despesas totais)
+ *     media  → média dos meses (bom para percentuais, valores unitários)
+ *     manual → usa acumulado_meta_manual/acumulado_realizado_manual direto,
+ *              ignorando o somatório dos meses (para métricas que não dá pra
+ *              derivar simplesmente somando/tirando média dos lançamentos mensais)
  *
  *   formula_atingimento — 'real_sobre_meta' (padrão) | 'meta_sobre_real'
  *     Define SOMENTE o valor exibido (atingimento).
@@ -150,27 +153,37 @@ function getMesesComRealizado(idMeta, ano) {
  */
 function calcMeta(meta, ano) {
   const { registros, ultimoMes } = getMesesComRealizado(meta.id, ano);
-
-  if (ultimoMes === 0) {
-    return { metaAc: null, realAc: null, atingimento: null, scoringAt: null, pontuacao: 0, ultimoMes: 0, registros };
-  }
-
   const formula   = meta.formula_atingimento || 'real_sobre_meta';
   const acumulado = meta.tipo_acumulado      || 'soma';
 
-  let metaSum = 0, realSum = 0, nMeta = 0, nReal = 0;
-  for (const r of registros) {
-    if (r.mes <= ultimoMes) {
-      const vm = (r.valor_meta      != null && r.valor_meta      !== '') ? parseFloat(r.valor_meta)      : null;
-      const vr = (r.valor_realizado != null && r.valor_realizado !== '') ? parseFloat(r.valor_realizado) : null;
-      if (vm !== null) { metaSum += vm; nMeta++; }
-      if (vr !== null) { realSum += vr; nReal++; }
+  let metaAc, realAc;
+
+  if (acumulado === 'manual') {
+    // Entrada manual — bypassa o somatório mensal; ultimoMes/registros seguem
+    // calculados normalmente só para os pontinhos de mês na tabela principal.
+    metaAc = (meta.acumulado_meta_manual      != null && meta.acumulado_meta_manual      !== '') ? parseFloat(meta.acumulado_meta_manual)      : null;
+    realAc = (meta.acumulado_realizado_manual != null && meta.acumulado_realizado_manual !== '') ? parseFloat(meta.acumulado_realizado_manual) : null;
+  } else {
+    if (ultimoMes === 0) {
+      return { metaAc: null, realAc: null, atingimento: null, scoringAt: null, pontuacao: 0, ultimoMes: 0, registros };
     }
+    let metaSum = 0, realSum = 0, nMeta = 0, nReal = 0;
+    for (const r of registros) {
+      if (r.mes <= ultimoMes) {
+        const vm = (r.valor_meta      != null && r.valor_meta      !== '') ? parseFloat(r.valor_meta)      : null;
+        const vr = (r.valor_realizado != null && r.valor_realizado !== '') ? parseFloat(r.valor_realizado) : null;
+        if (vm !== null) { metaSum += vm; nMeta++; }
+        if (vr !== null) { realSum += vr; nReal++; }
+      }
+    }
+    // Aplica acumulado: soma mantém o total; média divide pelo nº de meses com valor
+    metaAc = acumulado === 'media' ? (nMeta > 0 ? metaSum / nMeta : 0) : metaSum;
+    realAc = acumulado === 'media' ? (nReal > 0 ? realSum / nReal : 0) : realSum;
   }
 
-  // Aplica acumulado: soma mantém o total; média divide pelo nº de meses com valor
-  const metaAc = acumulado === 'media' ? (nMeta > 0 ? metaSum / nMeta : 0) : metaSum;
-  const realAc = acumulado === 'media' ? (nReal > 0 ? realSum / nReal : 0) : realSum;
+  if (metaAc == null || realAc == null) {
+    return { metaAc, realAc, atingimento: null, scoringAt: null, pontuacao: 0, ultimoMes, registros };
+  }
 
   // Atingimento para EXIBIÇÃO (fórmula configurável)
   let atingimento = null;
