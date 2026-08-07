@@ -93,26 +93,51 @@ async function doLogout() {
 }
 
 // ── loadData — carga completa do banco ────────────────────────
+// PostgREST corta a resposta em 1000 linhas por padrão. metas_mensais já
+// passou desse total (12 meses × todas as metas, incluindo históricos) —
+// sem paginar, os registros além da linha 1000 ficavam invisíveis no app
+// (apareciam como "—" mesmo com dado real no banco). Busca em páginas até
+// vir uma página incompleta.
+async function fetchAllRows(table, selectCols, orderCols) {
+  const pageSize = 1000;
+  let from = 0;
+  let all = [];
+  for (;;) {
+    let q = _supa.from(table).select(selectCols).range(from, from + pageSize - 1);
+    for (const col of orderCols) q = q.order(col);
+    const { data, error } = await q;
+    if (error) throw error;
+    all = all.concat(data || []);
+    if (!data || data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
 async function loadData() {
   if (!isLiveMode()) return;
   try {
     const [
-      { data: kpis,         error: e1 },
-      { data: kpiResps,     error: e2 },
-      { data: metas,        error: e3 },
-      { data: metasMensais, error: e4 },
-      { data: projetos,     error: e5 },
-      { data: logs,         error: e6 },
+      [
+        { data: kpis,     error: e1 },
+        { data: kpiResps, error: e2 },
+        { data: metas,    error: e3 },
+        { data: projetos, error: e5 },
+        { data: logs,     error: e6 },
+      ],
+      metasMensais,
     ] = await Promise.all([
-      _supa.from('kpis').select('*').eq('ativo', true).order('ordem_exibicao'),
-      _supa.from('kpi_responsaveis').select('id, id_kpi, responsavel, diretor').eq('ativo', true),
-      _supa.from('metas').select('*').eq('ativo', true).order('id_kpi').order('seq'),
-      _supa.from('metas_mensais').select('*').order('id_meta').order('ano').order('mes'),
-      _supa.from('projetos').select('*').eq('ativo', true),
-      _supa.from('logs_auditoria').select('*').order('data_hora', { ascending: false }).limit(200),
+      Promise.all([
+        _supa.from('kpis').select('*').eq('ativo', true).order('ordem_exibicao'),
+        _supa.from('kpi_responsaveis').select('id, id_kpi, responsavel, diretor').eq('ativo', true),
+        _supa.from('metas').select('*').eq('ativo', true).order('id_kpi').order('seq'),
+        _supa.from('projetos').select('*').eq('ativo', true),
+        _supa.from('logs_auditoria').select('*').order('data_hora', { ascending: false }).limit(200),
+      ]),
+      fetchAllRows('metas_mensais', '*', ['id_meta', 'ano', 'mes']),
     ]);
 
-    if (e1 || e2 || e3 || e4 || e5 || e6) throw new Error('Erro ao carregar dados do banco');
+    if (e1 || e2 || e3 || e5 || e6) throw new Error('Erro ao carregar dados do banco');
 
     // Constrói mapas a partir de kpi_responsaveis:
     //   respMap[id_kpi]   → array de nomes de responsáveis
