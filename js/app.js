@@ -851,30 +851,48 @@ function saveDrawer() {
     }
   }
 
-  // Salva valores mensais (meta e realizado)
+  // Salva valores mensais (meta e realizado). Metas antigas podem não ter
+  // os 12 registros de metas_mensais pré-criados (ex.: importadas via SQL
+  // sem o insert correspondente) — quando não existe registro para o mês,
+  // cria um novo em vez de descartar o valor digitado.
   const metaInputs = document.querySelectorAll('#drw-meta-grid input');
   const realInputs = document.querySelectorAll('#drw-real-grid input');
+
+  // Só cria registro novo quando há valor a gravar; se o mês já tinha
+  // registro, permite atualizar para null (usuário limpando o campo).
+  function findMensal(mes) {
+    return DB.metasMensais.find(r => r.id_meta === meta.id && r.ano === ANO_ATUAL && r.mes === mes);
+  }
+  function createMensal(mes) {
+    const reg = { id: `mm-${meta.id}-${mes}`, id_meta: meta.id, ano: ANO_ATUAL, mes, valor_meta: null, valor_realizado: null, obs: '' };
+    DB.metasMensais.push(reg);
+    return reg;
+  }
 
   for (const inp of metaInputs) {
     const mes = parseInt(inp.dataset.mes);
     const val = parseInput(inp.value, meta.tipo_formato);
-    const reg = DB.metasMensais.find(r => r.id_meta === meta.id && r.ano === ANO_ATUAL && r.mes === mes);
-    if (reg) {
-      if (reg.valor_meta !== val) {
-        addLog('UPDATE', 'metas_mensais', reg.id, 'valor_meta', reg.valor_meta, val);
-        reg.valor_meta = val;
-      }
+    let reg = findMensal(mes);
+    if (!reg) {
+      if (val == null) continue;
+      reg = createMensal(mes);
+    }
+    if (reg.valor_meta !== val) {
+      addLog('UPDATE', 'metas_mensais', reg.id, 'valor_meta', reg.valor_meta, val);
+      reg.valor_meta = val;
     }
   }
   for (const inp of realInputs) {
     const mes = parseInt(inp.dataset.mes);
     const val = parseInput(inp.value, meta.tipo_formato);
-    const reg = DB.metasMensais.find(r => r.id_meta === meta.id && r.ano === ANO_ATUAL && r.mes === mes);
-    if (reg) {
-      if (reg.valor_realizado !== val) {
-        addLog('UPDATE', 'metas_mensais', reg.id, 'valor_realizado', reg.valor_realizado, val);
-        reg.valor_realizado = val;
-      }
+    let reg = findMensal(mes);
+    if (!reg) {
+      if (val == null) continue;
+      reg = createMensal(mes);
+    }
+    if (reg.valor_realizado !== val) {
+      addLog('UPDATE', 'metas_mensais', reg.id, 'valor_realizado', reg.valor_realizado, val);
+      reg.valor_realizado = val;
     }
   }
 
