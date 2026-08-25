@@ -788,6 +788,28 @@ function closeDrawer() {
   drawerMetaId = null;
 }
 
+// Renumera o campo "#" (seq) das metas de um KPI para ficar sempre 1..N
+// sem buracos, preservando a ordem relativa atual entre elas. Chamada
+// depois de criar ou excluir uma meta — as duas únicas ações que mudam
+// o conjunto de metas do KPI (editar uma meta existente não mexe em seq).
+function resequenceMetasKpi(kpiId) {
+  const metas = DB.metas.filter(m => m.id_kpi === kpiId && m.ativo).sort((a, b) => a.seq - b.seq);
+  const alteradas = [];
+  metas.forEach((m, i) => {
+    const novoSeq = i + 1;
+    if (m.seq !== novoSeq) {
+      addLog('UPDATE', 'metas', m.id, 'seq', m.seq, novoSeq);
+      m.seq = novoSeq;
+      alteradas.push(m);
+    }
+  });
+  if (isLiveMode() && alteradas.length) {
+    alteradas.forEach(m => apiSaveMeta(m, false).catch(() => {}));
+    DB.logs.filter(l => !l._synced).forEach(l => { l._synced = true; apiAddLog(l).catch(() => {}); });
+  }
+  return alteradas;
+}
+
 function saveDrawer() {
   if (!drawerMetaId) return;
   const meta = DB.metas.find(m => m.id === drawerMetaId);
@@ -904,6 +926,7 @@ function saveDrawer() {
   if (before.bom_quando  !== meta.bom_quando)  addLog('UPDATE', 'metas', meta.id, 'bom_quando',  before.bom_quando,  meta.bom_quando);
 
   delete meta._isNew;   // marca como persistida antes de fechar
+  if (isNew) resequenceMetasKpi(meta.id_kpi);   // garante numeração 1..N sem buracos após criar
   closeDrawer();
   const msgRebal = metasRebalanceadas.length
     ? ` Peso de ${metasRebalanceadas.length} outra${metasRebalanceadas.length>1?'s':''} meta${metasRebalanceadas.length>1?'s':''} ajustado p/ manter o total em 100%.`
@@ -950,6 +973,8 @@ function deleteMeta(metaId) {
 
   DB.metas = DB.metas.filter(m => m.id !== metaId);
   DB.metasMensais = DB.metasMensais.filter(mm => mm.id_meta !== metaId);
+  // Fecha o buraco deixado pela meta excluída na numeração das demais.
+  const renumeradas = resequenceMetasKpi(meta.id_kpi);
 
   if (isLiveMode()) {
     apiDeleteMeta(metaId)
@@ -960,7 +985,8 @@ function deleteMeta(metaId) {
       .catch(err => toast('Erro ao excluir no servidor: ' + err.message, 'err'));
   }
 
-  toast('🗑️ Meta excluída.', '');
+  const msgRenum = renumeradas.length ? ' Numeração das demais metas ajustada.' : '';
+  toast('🗑️ Meta excluída.' + msgRenum, '');
   if (currentKpiId) showKPI(currentKpiId);
 }
 
