@@ -77,6 +77,11 @@ function toggleArea(el) {
   el.parentElement.classList.toggle('open');
 }
 
+// ── Recolher grupos de cards na tela Início ────────────────────────
+function toggleIndexArea(el) {
+  el.parentElement.classList.toggle('collapsed');
+}
+
 // ── Sidebar retrátil ──────────────────────────────────────────────
 // Recolhe/expande o menu lateral. A preferência é lembrada por sessão
 // no navegador (localStorage). No mobile o menu abre como painel sobreposto.
@@ -127,7 +132,9 @@ function showIndex() {
   let html = '';
   for (const [area, list] of Object.entries(areas)) {
     html += `<div class="index-area">
-      <div class="index-area-title">${areaLabel(area)}</div>
+      <div class="index-area-title" onclick="toggleIndexArea(this)">
+        <span>${areaLabel(area)}</span><span class="index-area-arrow">▶</span>
+      </div>
       <div class="kpi-cards-grid">`;
     for (const k of list) {
       const { totalPontuacao, ultimoMes } = calcKPI(k.id, ANO_ATUAL);
