@@ -82,6 +82,24 @@ function toggleIndexArea(el) {
   el.parentElement.classList.toggle('collapsed');
 }
 
+// ── Modo claro/escuro ───────────────────────────────────────────────
+// Alterna a classe no <body> (o script inline no <head> já aplica a
+// preferência salva antes da 1ª renderização, evitando flash).
+function toggleTheme() {
+  const dark = document.body.classList.toggle('theme-dark');
+  try { localStorage.setItem('metasTheme', dark ? 'dark' : 'light'); } catch (e) {}
+  updateThemeToggleBtn();
+}
+
+function updateThemeToggleBtn() {
+  const btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  const dark = document.body.classList.contains('theme-dark');
+  btn.textContent = dark ? '☀️' : '🌙';
+  btn.title = dark ? 'Mudar para modo claro' : 'Mudar para modo escuro';
+}
+updateThemeToggleBtn();
+
 // ── Sidebar retrátil ──────────────────────────────────────────────
 // Recolhe/expande o menu lateral. A preferência é lembrada por sessão
 // no navegador (localStorage). No mobile o menu abre como painel sobreposto.
@@ -1030,6 +1048,7 @@ function openKpiEdit() {
   if (!currentKpiId) return;
   const kpi = KPIS.find(k => k.id === currentKpiId);
   if (!kpi) return;
+  document.getElementById('kpi-edit-codigo').value = kpi.codigo;
   document.getElementById('kpi-edit-nome').value = kpi.nome;
   document.getElementById('kpi-edit-resp').value = kpiResps(kpi);
   document.getElementById('kpi-edit-dir').value  = kpi.diretoria;
@@ -1046,14 +1065,17 @@ function saveKpiEdit() {
   const kpi = KPIS.find(k => k.id === currentKpiId);
   if (!kpi) return;
 
+  const codigo = document.getElementById('kpi-edit-codigo').value.trim();
   const nome = document.getElementById('kpi-edit-nome').value.trim();
   const resp = document.getElementById('kpi-edit-resp').value.trim();
   const dir  = document.getElementById('kpi-edit-dir').value.trim();
   const area = document.getElementById('kpi-edit-area').value.trim();
 
+  if (!codigo) { toast('Código do KPI é obrigatório.', 'warn'); return; }
   if (!nome) { toast('Nome do KPI é obrigatório.', 'warn'); return; }
 
   // Atualiza em memória
+  kpi.codigo       = codigo;
   kpi.nome         = nome;
   kpi.responsaveis = resp ? resp.split(',').map(s => s.trim()).filter(Boolean) : [];
   kpi.diretoria    = dir;
@@ -1066,7 +1088,7 @@ function saveKpiEdit() {
   // Persiste no servidor
   if (isLiveMode()) {
     apiSaveKpi(kpi).catch(err => toast('Erro ao salvar KPI: ' + err.message, 'err'));
-    addLog('UPDATE', 'kpis', kpi.id, 'header', '', JSON.stringify({ nome, resp, dir, area }));
+    addLog('UPDATE', 'kpis', kpi.id, 'header', '', JSON.stringify({ codigo, nome, resp, dir, area }));
     DB.logs.filter(l => !l._synced).forEach(l => {
       l._synced = true;
       apiAddLog(l).catch(() => {});

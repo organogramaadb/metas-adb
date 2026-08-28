@@ -6,7 +6,13 @@
 <title>Acompanhamento de Metas | Amigos do Bem</title>
 <link rel="icon" type="image/png" href="assets/logo_adb.png">
 <link rel="apple-touch-icon" href="assets/logo_adb.png">
-<link rel="stylesheet" href="style.css?v=20260806a">
+<link rel="stylesheet" href="style.css?v=20260828a">
+<script>
+// Aplica o tema salvo antes da primeira renderização, evitando flash de tela clara.
+(function(){
+  try { if (localStorage.getItem('metasTheme') === 'dark') document.body.classList.add('theme-dark'); } catch (e) {}
+})();
+</script>
 </head>
 <body>
 
@@ -54,6 +60,7 @@
     <div class="h-sep"></div>
     <span id="mode-badge" class="mode-badge">DEMO</span>
     <div class="h-flex"></div>
+    <button class="h-theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Mudar para modo escuro" aria-label="Alternar modo claro/escuro">🌙</button>
     <div class="h-user">
       <div class="h-uname" id="hdr-uname">—</div>
       <div class="h-urole" id="hdr-urole">—</div>
@@ -500,7 +507,10 @@
     </div>
     <div class="mbd">
       <div class="fg">
-        <div class="fr s1">
+        <div class="fr" style="grid-template-columns:110px 1fr">
+          <div class="fi"><label>Código</label>
+            <input type="text" id="kpi-edit-codigo" placeholder="Ex.: 1.01">
+          </div>
           <div class="fi"><label>Nome do KPI</label>
             <input type="text" id="kpi-edit-nome" placeholder="Ex.: KPI Administração Central">
           </div>
@@ -589,10 +599,10 @@
 ════════════════════════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- ?v= força o navegador a buscar a versão nova após cada publicação (cache-busting). Incrementar a cada deploy. -->
-<script src="js/data.js?v=20260806d"></script>
-<script src="js/engine.js?v=20260806d"></script>
-<script src="js/api.js?v=20260806d"></script>
-<script src="js/app.js?v=20260806d"></script>
+<script src="js/data.js?v=20260828a"></script>
+<script src="js/engine.js?v=20260828a"></script>
+<script src="js/api.js?v=20260828a"></script>
+<script src="js/app.js?v=20260828a"></script>
 
 </body>
 </html>

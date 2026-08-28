@@ -393,6 +393,7 @@ async function apiSaveKpi(kpi) {
 
   // 1. Atualiza a tabela kpis (apenas colunas que existem nela)
   const dbKpi = {
+    codigo:        kpi.codigo,
     nome:          kpi.nome,
     descricao:     kpi.descricao || null,
     nome_completo: (kpi.codigo ? kpi.codigo + ' - ' : '') + kpi.nome,
