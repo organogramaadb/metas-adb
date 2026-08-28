@@ -523,6 +523,11 @@ table.proj-tbl tbody tr:hover td{background:var(--surface-2)}
   .h-sub-hd,.h-sep,.mode-badge,.h-urole{display:none}
   .h-name{font-size:13px;max-width:38vw}
   .h-uname{max-width:22vw}
+  /* Cabeçalho do KPI: os 3 botões ao lado do título não cabem lado a lado
+     em tela estreita — isso empurrava #content pra rolagem horizontal
+     escondida, cortando o conteúdo à esquerda. Empilha em vez de espremer. */
+  .kpi-header{flex-direction:column;align-items:stretch}
+  .khd-btns{margin-left:0;margin-top:4px;flex-wrap:wrap}
 }
 /* ── Gerenciamento de Usuários ────────────────────────────────────── */
 #view-users{display:none;padding:20px;overflow-y:auto;flex:1}
