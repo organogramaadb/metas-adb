@@ -21,6 +21,27 @@ const _supa = (SUPA_URL && SUPA_KEY)
 
 function isLiveMode() { return !!(SUPA_URL && SUPA_KEY); }
 
+// ── Aviso de sessão expirada ────────────────────────────────────────
+// Sem isso, quando o token do Supabase expira/é revogado, as próximas ações
+// só davam erro 401 silencioso (toast genérico de "erro ao salvar"), sem
+// deixar claro que era preciso logar de novo. _intentionalLogout distingue
+// o "Sair" clicado pelo usuário (que também dispara SIGNED_OUT) da queda
+// inesperada da sessão.
+let _intentionalLogout = false;
+if (isLiveMode()) {
+  _supa.auth.onAuthStateChange((event) => {
+    if (event !== 'SIGNED_OUT') return;
+    if (_intentionalLogout) { _intentionalLogout = false; return; }
+    if (SESSION) {
+      toast('⚠️ Sua sessão expirou. Faça login novamente.', 'err');
+      logout();
+      DB.usuario = null;
+      document.getElementById('app').classList.remove('on');
+      document.getElementById('lo').style.display = 'flex';
+    }
+  });
+}
+
 // ── fillDemo — preenche campos de login para demonstração ─────
 function fillDemo(email, pwd) {
   document.getElementById('inp-email').value = email;
@@ -84,7 +105,8 @@ async function doLogin(event) {
 
 // ── doLogout ──────────────────────────────────────────────────
 async function doLogout() {
-  if (isLiveMode()) await _supa.auth.signOut();
+  if (!confirmLeaveOpenEditors()) return;
+  if (isLiveMode()) { _intentionalLogout = true; await _supa.auth.signOut(); }
   logout();   // engine.js — limpa SESSION
   DB.usuario = null;
   document.getElementById('app').classList.remove('on');
@@ -494,6 +516,21 @@ async function apiDeleteUser(email) {
 async function apiResetPassword(email, senha) {
   if (!isLiveMode()) return { ok: true, demo: true };
   return await invokeAdminUsers('reset_password', { currentEmail: email, senha });
+}
+
+// ── apiUpdateMyAccount ─────────────────────────────────────
+// Autoatendimento: o próprio usuário logado troca seu e-mail e/ou senha.
+// Usa a API nativa do Supabase Auth (não depende da Edge Function admin-users,
+// que é só para um admin alterar CONTA DE TERCEIROS).
+async function apiUpdateMyAccount({ email, senha }) {
+  if (!isLiveMode()) return { ok: true, demo: true };
+  const payload = {};
+  if (email) payload.email = email;
+  if (senha) payload.password = senha;
+  if (!Object.keys(payload).length) return { ok: true };
+  const { error } = await _supa.auth.updateUser(payload);
+  if (error) throw error;
+  return { ok: true };
 }
 
 // ── apiSetUserActive ──────────────────────────────────────

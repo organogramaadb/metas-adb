@@ -8,8 +8,9 @@ let drawerMetaId = null;
 let drawerKpiId = null;   // KPI do drawer aberto — usado pelo mural de comentários
 let drawerCurrentTab = 'dados';
 let editingProjId = null;
-let currentView = 'index';   // 'index' | 'kpi' | 'users'
+let currentView = 'index';   // 'index' | 'kpi' | 'users' | 'tarefas' | 'config'
 let editingUserEmail = null; // null = novo usuário
+let dashboardDrillArea = null; // frente em foco no dashboard (null = visão geral)
 
 // ── Toast ─────────────────────────────────────────────────────────
 let toastTimer;
@@ -20,6 +21,76 @@ function toast(msg, tipo = '') {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { el.className = ''; }, 3200);
 }
+
+// ── Alterações não salvas — avisa antes de fechar drawer/modal ─────
+const _dirtyForms = new Set();
+function markDirty(id) { _dirtyForms.add(id); }
+function clearDirty(id) { _dirtyForms.delete(id); }
+function confirmDiscard(id) {
+  if (!_dirtyForms.has(id)) return true;
+  const ok = confirm('Você tem alterações não salvas. Deseja realmente sair sem salvar?');
+  if (ok) clearDirty(id);
+  return ok;
+}
+function initDirtyTracking() {
+  ['drawer', 'proj-modal', 'kpi-edit-modal', 'user-modal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', () => markDirty(id));
+  });
+}
+function closeDrawerWithConfirm()   { if (confirmDiscard('drawer'))        closeDrawer(); }
+function closeModalWithConfirm()    { if (confirmDiscard('proj-modal'))    closeModal(); }
+function closeKpiEditWithConfirm()  { if (confirmDiscard('kpi-edit-modal'))closeKpiEdit(); }
+function closeUserModalWithConfirm(){ if (confirmDiscard('user-modal'))    closeUserModal(); }
+
+// Segunda camada de proteção: o clique no overlay/X/Cancelar já cobre o
+// "fechar o editor", mas o usuário também pode tentar sair navegando (clicar
+// num KPI diferente na lateral, em Início, Tarefas etc.) com o drawer/modal
+// ainda aberto por trás. As telas (showIndex/showKPI/showTarefas/showConfig/
+// showUsersAdmin) chamam isto antes de trocar de tela.
+function confirmLeaveOpenEditors() {
+  if (document.getElementById('drawer').classList.contains('open')) {
+    if (!confirmDiscard('drawer')) return false;
+    closeDrawer();
+  }
+  if (document.getElementById('proj-modal').classList.contains('on')) {
+    if (!confirmDiscard('proj-modal')) return false;
+    closeModal();
+  }
+  if (document.getElementById('kpi-edit-modal').classList.contains('on')) {
+    if (!confirmDiscard('kpi-edit-modal')) return false;
+    closeKpiEdit();
+  }
+  if (document.getElementById('user-modal').classList.contains('on')) {
+    if (!confirmDiscard('user-modal')) return false;
+    closeUserModal();
+  }
+  return true;
+}
+
+// Trava o botão de Salvar durante a ação — evita clique duplo em conexão
+// lenta e dá um retorno visual de que algo está acontecendo.
+function setBtnLoading(id, loading, loadingText) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  if (loading) {
+    btn.dataset.origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = loadingText || '⏳ Salvando...';
+  } else {
+    btn.disabled = false;
+    if (btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
+  }
+}
+
+// Esc fecha o drawer/modal aberto no momento (respeitando o aviso acima)
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (document.getElementById('drawer').classList.contains('open'))            return closeDrawerWithConfirm();
+  if (document.getElementById('proj-modal').classList.contains('on'))          return closeModalWithConfirm();
+  if (document.getElementById('kpi-edit-modal').classList.contains('on'))      return closeKpiEditWithConfirm();
+  if (document.getElementById('user-modal').classList.contains('on'))         return closeUserModalWithConfirm();
+});
 
 // ── initApp — chamado por api.js após login bem-sucedido ──────────
 function initApp() {
@@ -34,6 +105,9 @@ function initApp() {
   document.getElementById('hdr-avatar').textContent = u.nome.charAt(0).toUpperCase();
   renderNav();
   initNavState();
+  initIndicadoresNavState();
+  initDirtyTracking();
+  updateTarefasBadge();
   showIndex();
 }
 
@@ -46,45 +120,54 @@ function renderNav() {
     if (!areas[k.area]) areas[k.area] = [];
     areas[k.area].push(k);
   }
+  // Padrão: grupos começam fechados (menos poluído). Ao selecionar um KPI,
+  // highlightNav() abre o grupo dele automaticamente.
   let html = '';
   for (const [area, list] of Object.entries(areas)) {
-    const isOpen = true;
-    html += `<div class="nav-area${isOpen?' open':''}">
+    html += `<div class="nav-area">
       <div class="nav-area-hd" onclick="toggleArea(this)">
         <span>${areaLabel(area)}</span><span class="nav-area-arrow">▶</span>
       </div>
       <div class="nav-area-cnt">`;
     for (const k of list) {
+      const { totalPontuacao, ultimoMes } = calcKPI(k.id, ANO_ATUAL);
+      const sevCls = ultimoMes > 0 ? scoreClass(totalPontuacao) : '';
       html += `<div class="nav-kpi${currentKpiId===k.id?' sel':''}" onclick="showKPI('${k.id}')">
         <span class="nav-kpi-code">${k.codigo}</span>
         <span class="nav-kpi-name">${k.nome.replace('KPI ','')}</span>
-        <span class="nav-kpi-dot"></span>
+        <span class="nav-kpi-dot ${sevCls}" title="${sevCls==='err'?'Crítico':sevCls==='warn'?'Atenção':''}"></span>
       </div>`;
     }
     html += `</div></div>`;
   }
-  if (isAdmin()) {
-    html += `<div class="nav-admin-sep"></div>
-      <div class="nav-kpi nav-admin-link${currentView==='users'?' sel':''}" onclick="showUsersAdmin()">
-        <span class="nav-kpi-code" style="font-size:13px">⚙</span>
-        <span class="nav-kpi-name">Gerenciar Acessos</span>
-      </div>`;
-  }
   document.getElementById('nav-inner').innerHTML = html;
+  highlightNav(currentKpiId);
 }
 
 function toggleArea(el) {
   el.parentElement.classList.toggle('open');
 }
 
-// ── Recolher grupos de cards na tela Início ────────────────────────
-function toggleIndexArea(el) {
-  el.parentElement.classList.toggle('collapsed');
+// Busca rápida na árvore de Indicadores — filtra por código ou nome, e abre
+// automaticamente os grupos que têm resultado.
+function filterNav(query) {
+  const q = query.trim().toLowerCase();
+  document.querySelectorAll('.nav-area').forEach(areaEl => {
+    let anyMatch = false;
+    areaEl.querySelectorAll('.nav-kpi').forEach(kpiEl => {
+      const match = !q || kpiEl.textContent.toLowerCase().includes(q);
+      kpiEl.style.display = match ? '' : 'none';
+      if (match) anyMatch = true;
+    });
+    areaEl.style.display = anyMatch ? '' : 'none';
+    if (q) areaEl.classList.toggle('open', anyMatch);
+  });
 }
 
 // ── Modo claro/escuro ───────────────────────────────────────────────
 // Alterna a classe no <body> (o script inline no <head> já aplica a
-// preferência salva antes da 1ª renderização, evitando flash).
+// preferência salva antes da 1ª renderização, evitando flash). Controle
+// mora em Configurações — disponível a qualquer perfil de usuário.
 function toggleTheme() {
   const dark = document.body.classList.toggle('theme-dark');
   try { localStorage.setItem('metasTheme', dark ? 'dark' : 'light'); } catch (e) {}
@@ -92,13 +175,39 @@ function toggleTheme() {
 }
 
 function updateThemeToggleBtn() {
-  const btn = document.getElementById('theme-toggle');
+  const btn = document.getElementById('cfg-theme-btn');
+  const desc = document.getElementById('cfg-theme-desc');
   if (!btn) return;
   const dark = document.body.classList.contains('theme-dark');
-  btn.textContent = dark ? '☀️' : '🌙';
-  btn.title = dark ? 'Mudar para modo claro' : 'Mudar para modo escuro';
+  btn.textContent = dark ? '☀️ Ativar modo claro' : '🌙 Ativar modo escuro';
+  if (desc) desc.textContent = dark ? 'Modo escuro' : 'Modo claro';
 }
 updateThemeToggleBtn();
+
+// ── Indicadores retrátil (árvore de KPIs na lateral) ───────────────
+function toggleIndicadoresNav() {
+  const wrap = document.getElementById('nav-indicadores-wrap');
+  const collapsed = wrap.classList.toggle('collapsed');
+  document.getElementById('nav-top-indicadores-arrow').classList.toggle('open', !collapsed);
+  try { localStorage.setItem('metasIndicadoresCollapsed', collapsed ? '1' : '0'); } catch (e) {}
+}
+
+function initIndicadoresNavState() {
+  const wrap = document.getElementById('nav-indicadores-wrap');
+  let pref = null;
+  try { pref = localStorage.getItem('metasIndicadoresCollapsed'); } catch (e) {}
+  const collapsed = pref === '1';
+  wrap.classList.toggle('collapsed', collapsed);
+  document.getElementById('nav-top-indicadores-arrow').classList.toggle('open', !collapsed);
+}
+
+// ── Destaque do item ativo no bloco de topo da lateral ─────────────
+function updateNavTopActive() {
+  const map = { index: 'nav-top-inicio', origem: 'nav-top-origem', kpi: 'nav-top-indicadores', tarefas: 'nav-top-tarefas', config: 'nav-top-config', users: 'nav-top-config' };
+  document.querySelectorAll('.nav-top-link').forEach(el => el.classList.remove('sel'));
+  const id = map[currentView];
+  if (id) document.getElementById(id).classList.add('sel');
+}
 
 // ── Sidebar retrátil ──────────────────────────────────────────────
 // Recolhe/expande o menu lateral. A preferência é lembrada por sessão
@@ -121,77 +230,489 @@ function initNavState() {
 function highlightNav(kpiId) {
   document.querySelectorAll('.nav-kpi').forEach(el => el.classList.remove('sel'));
   const active = document.querySelector(`.nav-kpi[onclick*="${kpiId}"]`);
-  if (active) active.classList.add('sel');
+  if (active) {
+    active.classList.add('sel');
+    // Abre o grupo do KPI selecionado — os grupos começam fechados por padrão.
+    const area = active.closest('.nav-area');
+    if (area) area.classList.add('open');
+    if (active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });
+  }
 }
 
-// ── View: Index ───────────────────────────────────────────────────
-function showIndex() {
+// ── View: Index (Dashboard) ─────────────────────────────────────────
+function showIndex(area) {
+  if (!confirmLeaveOpenEditors()) return;
   currentKpiId = null;
   currentView = 'index';
+  dashboardDrillArea = area || null;
   document.getElementById('view-kpi').classList.remove('on');
   document.getElementById('view-users').classList.remove('on');
+  document.getElementById('view-tarefas').classList.remove('on');
+  document.getElementById('view-config').classList.remove('on');
+  document.getElementById('view-origem').classList.remove('on');
   document.getElementById('view-index').classList.add('on');
   highlightNav(null);
-  setBreadcrumb([{ label: 'Início' }]);
+  updateNavTopActive();
+
+  if (dashboardDrillArea) {
+    setBreadcrumb([{ label: 'Início', action: 'showIndex()' }, { label: areaLabel(dashboardDrillArea) }]);
+  } else {
+    setBreadcrumb([{ label: 'Início' }]);
+  }
 
   const u = SESSION;
-  document.getElementById('welcome-msg').textContent =
-    canSeeAll() ? 'Painel de Metas Corporativas' : `Olá, ${u.nome.split(' ')[0]}`;
-  document.getElementById('welcome-sub').textContent =
-    canSeeAll() ? 'Visão consolidada de todos os KPIs.' : 'Seus KPIs e metas de responsabilidade.';
+  document.getElementById('welcome-msg').textContent = `Olá, ${u.nome.split(' ')[0]}! 👋`;
+  if (dashboardDrillArea) {
+    document.getElementById('welcome-sub').textContent = `Aqui está o panorama geral do pilar ${areaLabel(dashboardDrillArea)}.`;
+  } else {
+    document.getElementById('welcome-sub').textContent = canSeeAll()
+      ? 'Aqui está o panorama geral do monitoramento de indicadores.'
+      : 'Seus indicadores e metas de responsabilidade.';
+  }
+  document.getElementById('dash-updated').textContent = 'Atualizado em ' +
+    new Date().toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+  renderDashboard();
+}
+
+function renderDashboard() {
+  const kpis = allowedKPIs();
+  const stats = kpis.map(k => {
+    const { totalPontuacao, ultimoMes } = calcKPI(k.id, ANO_ATUAL);
+    return { kpi: k, totalPontuacao, ultimoMes, cls: ultimoMes > 0 ? scoreClass(totalPontuacao) : null };
+  });
+  renderDashStatCards(stats);
+
+  // "Indicadores Organizacionais" (KPI 0.00) é um indicador agregado, não uma
+  // frente operacional — conta nos cards do topo e vira o centro do painel,
+  // mas não disputa espaço como mais um quadrante/fatia.
+  const orgStat = stats.find(s => s.kpi.area === 'ORGANIZACIONAL');
+  const frenteStats = stats.filter(s => s.kpi.area !== 'ORGANIZACIONAL');
+  const areas = {};
+  for (const s of frenteStats) { (areas[s.kpi.area] = areas[s.kpi.area] || []).push(s); }
+  if (dashboardDrillArea && !areas[dashboardDrillArea]) dashboardDrillArea = null;
+
+  renderFrenteDonut(areas, dashboardDrillArea, orgStat);
+
+  const pendWrap  = document.getElementById('dash-pendencias-wrap');
+  const cardsWrap = document.getElementById('dash-cards-wrap');
+  const titleEl = document.getElementById('dash-panorama-title');
+  const subEl   = document.getElementById('dash-panorama-sub');
+  const btnsEl  = document.getElementById('dash-panorama-btns');
+
+  if (dashboardDrillArea) {
+    pendWrap.style.display = 'none';
+    cardsWrap.style.display = '';
+    renderKpiCardsGrid(areas[dashboardDrillArea].map(s => s.kpi));
+    titleEl.textContent = areaIcon(dashboardDrillArea) + ' ' + areaLabel(dashboardDrillArea);
+    subEl.textContent = 'Desempenho de cada indicador desta frente — veja o detalhe na lista ou nos cards abaixo';
+    btnsEl.innerHTML = `<button class="sec-btn" onclick="showIndex()">← Voltar ao panorama geral</button>`;
+  } else {
+    pendWrap.style.display = '';
+    cardsWrap.style.display = 'none';
+    renderDashPendencias(kpis);
+    titleEl.textContent = 'Panorama por Frente';
+    subEl.textContent = 'Desempenho médio por frente de monitoramento — clique numa frente pra aprofundar';
+    btnsEl.innerHTML = '';
+  }
+}
+
+// Stat cards do topo do dashboard. KPIs sem nenhum realizado lançado
+// (ultimoMes===0) não entram em ok/warn/err — só no total — senão contam
+// como "crítico" sem nunca terem sido apurados.
+function renderDashStatCards(stats) {
+  const total = stats.length;
+  const nOk   = stats.filter(s => s.cls === 'ok').length;
+  const nWarn = stats.filter(s => s.cls === 'warn').length;
+  const nErr  = stats.filter(s => s.cls === 'err').length;
+  const semDados = stats.filter(s => s.cls === null).length;
+  const pct = n => total ? Math.round((n / total) * 100) : 0;
+
+  const cards = [
+    { icon:'🎯', n:total, label:'Indicadores monitorados', sub: semDados ? `${semDados} sem dado lançado` : 'Ver todos', cls:'' },
+    { icon:'✅', n:nOk,   label:'No alvo',  sub:`${pct(nOk)}% do total`,   cls:'ok' },
+    { icon:'⚠️', n:nWarn, label:'Atenção',  sub:`${pct(nWarn)}% do total`, cls:'warn' },
+    { icon:'❌', n:nErr,  label:'Crítico',  sub:`${pct(nErr)}% do total`,  cls:'err' },
+  ];
+  document.getElementById('dash-stats').innerHTML = cards.map(c => `
+    <div class="dash-stat-card">
+      <div class="dash-stat-ic ${c.cls}">${c.icon}</div>
+      <div>
+        <div class="dash-stat-n">${c.n}</div>
+        <div class="dash-stat-l">${c.label}</div>
+        <div class="dash-stat-s ${c.cls}">${c.sub}</div>
+      </div>
+    </div>`).join('');
+}
+
+function statusWord(cls) {
+  return cls === 'ok' ? 'No alvo' : cls === 'warn' ? 'Atenção' : cls === 'err' ? 'Crítico' : 'Sem dados';
+}
+
+// Painel "Panorama por Frente":
+//  - Visão geral (até 4 frentes): quadrantes fixos (1 por frente) + centro com
+//    o indicador organizacional (KPI 0.00) — layout parecido com a referência.
+//  - Drill-down (1 fatia por KPI da frente em foco) ou mais de 4 frentes no
+//    futuro: anel proporcional com lista clicável ao lado (melhor no mobile).
+function renderFrenteDonut(areasMap, drillArea, orgStat) {
+  let segments;
+  if (drillArea) {
+    segments = (areasMap[drillArea] || []).map(s => ({
+      icon: s.kpi.codigo, label: s.kpi.nome.replace('KPI ', ''),
+      pct: s.totalPontuacao, cls: s.cls, hasData: s.ultimoMes > 0,
+      onClick: `showKPI('${s.kpi.id}')`,
+    }));
+  } else {
+    segments = Object.entries(areasMap).map(([area, list]) => {
+      const withData = list.filter(s => s.ultimoMes > 0);
+      const avg = withData.length ? withData.reduce((a, s) => a + s.totalPontuacao, 0) / withData.length : 0;
+      return {
+        icon: areaIcon(area), label: areaLabel(area),
+        pct: avg, cls: withData.length ? scoreClass(avg) : null, hasData: withData.length > 0,
+        onClick: `showIndex('${area}')`,
+      };
+    });
+  }
+
+  const listEl = document.getElementById('dash-frente-list');
+
+  // Quadrantes fixos só fazem sentido com exatamente 4 frentes (o caso comum
+  // de quem enxerga todas); com menos ou mais, cai no anel proporcional.
+  if (!drillArea && segments.length === 4) {
+    const center = orgStat
+      ? { label: areaLabel('ORGANIZACIONAL'), pct: orgStat.totalPontuacao,
+          cls: orgStat.ultimoMes > 0 ? scoreClass(orgStat.totalPontuacao) : null,
+          hasData: orgStat.ultimoMes > 0, onClick: `showKPI('${orgStat.kpi.id}')` }
+      : (() => {
+          const withData = segments.filter(s => s.hasData);
+          const avg = withData.length ? withData.reduce((a, s) => a + s.pct, 0) / withData.length : 0;
+          return { label: 'Desempenho Geral', pct: avg, cls: withData.length ? scoreClass(avg) : null, hasData: withData.length > 0, onClick: null };
+        })();
+    document.getElementById('dash-donut-wrap').innerHTML = buildQuadrantPanorama(segments, center);
+    listEl.innerHTML = '';
+    listEl.style.display = 'none';
+    return;
+  }
+
+  const withData = segments.filter(s => s.hasData);
+  const overall = withData.length ? withData.reduce((a, s) => a + s.pct, 0) / withData.length : 0;
+  const overallCls = withData.length ? scoreClass(overall) : '';
+
+  // No drill-down o gráfico mostra só o total da frente (1 fatia única) — o
+  // detalhe por indicador fica na lista abaixo e nos cards, não fatiado no anel.
+  const graphicSegments = drillArea
+    ? [{ label: areaLabel(drillArea), pct: overall, cls: overallCls || null, hasData: withData.length > 0, onClick: '' }]
+    : segments;
+
+  document.getElementById('dash-donut-wrap').innerHTML =
+    buildDonutSVG(graphicSegments, overall, overallCls, drillArea ? 'da Frente' : 'Geral');
+
+  let listHtml = '';
+  for (const s of segments) {
+    const pctTxt = s.hasData ? fmtPct(s.pct) : 'Sem dados';
+    listHtml += `<div class="dash-frente-row" onclick="${s.onClick}">
+      <div class="dash-frente-ic">${s.icon}</div>
+      <div class="dash-frente-mid">
+        <div class="dash-frente-name">${s.label}</div>
+        <div class="dash-frente-bar"><div class="dash-frente-fill ${s.cls || ''}" style="width:${Math.min(100, s.pct*100)}%"></div></div>
+      </div>
+      <div class="dash-frente-pct ${s.cls || ''}">${pctTxt}</div>
+    </div>`;
+  }
+  listEl.innerHTML = listHtml;
+  listEl.style.display = '';
+}
+
+// 4 quadrantes fixos (1/4 de círculo cada, com espaço entre eles) + um círculo
+// central sobreposto — mesma técnica de 4 cantos arredondados formando um
+// círculo, só com CSS (sem SVG, sem lib de gráfico).
+function buildQuadrantPanorama(segments, center) {
+  const positions = ['tl', 'tr', 'bl', 'br'];
+  let quads = '';
+  segments.slice(0, 4).forEach((s, i) => {
+    const cls = s.hasData ? s.cls : '';
+    quads += `<div class="dash-quad ${positions[i]} ${cls}" onclick="${s.onClick}" title="${s.label}">
+      <div class="dash-quad-head">
+        <span class="dash-quad-ic">${s.icon}</span>
+        <span class="dash-quad-name">${s.label}</span>
+      </div>
+      <div class="dash-quad-pct">${s.hasData ? Math.round(s.pct*100)+'%' : '—'}</div>
+      <div class="dash-quad-status">${statusWord(s.hasData ? s.cls : null)}</div>
+    </div>`;
+  });
+  const clickable = center.onClick ? ' clickable' : '';
+  const centerOnclick = center.onClick ? ` onclick="${center.onClick}"` : '';
+  return `<div class="dash-quad-wrap">
+    <div class="dash-quad-grid">${quads}</div>
+    <div class="dash-quad-center${clickable}"${centerOnclick} title="${center.label}">
+      <div class="dash-quad-center-lbl">${center.label}</div>
+      <div class="dash-quad-center-pct ${center.hasData ? center.cls : ''}">${center.hasData ? Math.round(center.pct*100)+'%' : '—'}</div>
+      <div class="dash-quad-center-status">${statusWord(center.hasData ? center.cls : null)}</div>
+    </div>
+  </div>`;
+}
+
+function buildDonutSVG(segments, overallPct, overallCls, centerLabel) {
+  // Anel grande e grosso — mesmo peso visual do painel em quadrantes —
+  // com um círculo central "cartão" (igual ao dash-quad-center) por baixo do texto.
+  // Gap generoso entre as fatias pra ficar clara a separação de cada indicador.
+  const size = 340, r = 125, cx = size/2, cy = size/2, sw = 40, holeR = r - sw/2 - 8;
+  const C = 2 * Math.PI * r;
+  const n = Math.max(1, segments.length);
+  const gap = n > 1 ? 20 : 0;
+  const segLen = Math.max(1, C / n - gap);
+  const colorVar = { ok: 'var(--ok)', warn: 'var(--warn)', err: 'var(--err)' };
+
+  let circles = '', offset = 0;
+  for (const s of segments) {
+    const color = s.hasData ? (colorVar[s.cls] || 'var(--border)') : 'var(--border)';
+    const title = s.label + (s.hasData ? ' — ' + fmtPct(s.pct) : ' — sem dados');
+    const clickable = !!s.onClick;
+    circles += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${segLen} ${C - segLen}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"${clickable ? ` style="cursor:pointer" onclick="${s.onClick}"` : ''}><title>${title}</title></circle>`;
+    offset += C / n;
+  }
+
+  const pctTxt = segments.some(s => s.hasData) ? Math.round(overallPct * 100) + '%' : '—';
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--surface-2)" stroke-width="${sw}"></circle>
+    ${circles}
+    <circle cx="${cx}" cy="${cy}" r="${holeR}" fill="var(--surface)" class="dash-donut-hole"></circle>
+    <text x="${cx}" y="${cy-8}" text-anchor="middle" class="dash-donut-pct ${overallCls}">${pctTxt}</text>
+    <text x="${cx}" y="${cy+22}" text-anchor="middle" class="dash-donut-lbl">Desempenho ${centerLabel}</text>
+  </svg>`;
+}
+
+// Pendências e Ações Prioritárias — visão geral do dashboard (top 6, abertas,
+// por prioridade e prazo). Reaproveita openTasksFor/openProjModal já existentes.
+function renderDashPendencias(kpis) {
+  const all = openTasksFor(kpis);
+  document.getElementById('dash-pend-count').textContent = all.length ? all.length : '';
+  const tasks = all.slice(0, 6);
+  if (!tasks.length) {
+    document.getElementById('dash-pend-tbody').innerHTML =
+      '<tr><td colspan="4"><div class="empty-state"><div class="empty-state-icon">🎉</div><div class="empty-state-t">Nenhuma pendência em aberto</div></div></td></tr>';
+    return;
+  }
+  let rows = '';
+  for (const p of tasks) {
+    const kpi = KPIS.find(k => k.id === p.id_kpi);
+    rows += `<tr onclick="openProjModal('${p.id}','${p.id_kpi}')" style="cursor:pointer">
+      <td>
+        <div class="proj-name">${p.nome}</div>
+        <div class="proj-meta-link">${p.proxima_acao || p.responsavel || ''}</div>
+      </td>
+      <td style="font-size:11px;color:var(--t3)">${kpi ? kpi.codigo + ' · ' + kpi.nome.replace('KPI ','') : '—'}</td>
+      <td class="tbl-c" style="font-size:11px;white-space:nowrap">${fmtPrazo(p.prazo)}</td>
+      <td class="tbl-c"><span class="prio-badge ${prioBadgeClass(p.prioridade)}">${p.prioridade}</span></td>
+    </tr>`;
+  }
+  document.getElementById('dash-pend-tbody').innerHTML = rows;
+}
+
+// Grade de cards de 1 frente (drill-down do dashboard) — mesma classe/marcação
+// que o antigo "Início" plano já usava, só que filtrada a 1 frente por vez.
+function buildKpiCardsGridHTML(list) {
+  let html = '';
+  for (const k of list) {
+    const { totalPontuacao, ultimoMes } = calcKPI(k.id, ANO_ATUAL);
+    const cls = scoreClass(totalPontuacao);
+    const pctDisplay = (totalPontuacao * 100).toFixed(1) + '%';
+    const barWidth = Math.min(100, totalPontuacao * 100).toFixed(1);
+    const periodo = ultimoMes > 0 ? `Até ${MESES_ABREV[ultimoMes-1]}/2026` : 'Sem realizado';
+    html += `<div class="kpi-index-card" onclick="showKPI('${k.id}')">
+      <div class="kic-code">${k.codigo}</div>
+      <div class="kic-name">${k.nome}</div>
+      <div class="kic-info">
+        <div class="kic-resp">Resp.: <strong>${kpiResps(k)}</strong></div>
+        <div>${k.diretoria}</div>
+      </div>
+      <div class="kic-score">
+        <div class="kic-score-bar"><div class="kic-score-fill ${cls}" style="width:${barWidth}%"></div></div>
+        <div class="kic-score-val ${cls}">${pctDisplay} ${periodo ? '· '+periodo : ''}</div>
+      </div>
+    </div>`;
+  }
+  return html;
+}
+
+function renderKpiCardsGrid(list) {
+  document.getElementById('dash-cards-grid').innerHTML = buildKpiCardsGridHTML(list);
+}
+
+// ── View: Origem (layout original, antes do novo dashboard) ─────────
+// Pedido explícito: manter disponível o formato antigo — todas as frentes
+// (incluindo Indicadores Organizacionais) lado a lado, cada uma com seus
+// cards, recolhível por grupo. Não duplica lógica de card (buildKpiCardsGridHTML).
+function showOrigem() {
+  if (!confirmLeaveOpenEditors()) return;
+  currentKpiId = null;
+  currentView = 'origem';
+  dashboardDrillArea = null;
+  document.getElementById('view-index').classList.remove('on');
+  document.getElementById('view-kpi').classList.remove('on');
+  document.getElementById('view-users').classList.remove('on');
+  document.getElementById('view-tarefas').classList.remove('on');
+  document.getElementById('view-config').classList.remove('on');
+  document.getElementById('view-origem').classList.add('on');
+  highlightNav(null);
+  updateNavTopActive();
+  setBreadcrumb([{ label: 'Início', action: 'showIndex()' }, { label: 'Origem' }]);
+
+  const u = SESSION;
+  document.getElementById('origem-msg').textContent = canSeeAll() ? 'Painel de Metas Corporativas' : `Olá, ${u.nome.split(' ')[0]}`;
+  document.getElementById('origem-sub').textContent = canSeeAll() ? 'Visão consolidada de todos os KPIs.' : 'Seus KPIs e metas de responsabilidade.';
 
   const kpis = allowedKPIs();
   const areas = {};
-  for (const k of kpis) {
-    if (!areas[k.area]) areas[k.area] = [];
-    areas[k.area].push(k);
-  }
+  for (const k of kpis) { (areas[k.area] = areas[k.area] || []).push(k); }
 
   let html = '';
   for (const [area, list] of Object.entries(areas)) {
     html += `<div class="index-area">
-      <div class="index-area-title" onclick="toggleIndexArea(this)">
+      <div class="index-area-title" onclick="toggleOrigemArea(this)">
         <span>${areaLabel(area)}</span><span class="index-area-arrow">▶</span>
       </div>
-      <div class="kpi-cards-grid">`;
-    for (const k of list) {
-      const { totalPontuacao, ultimoMes } = calcKPI(k.id, ANO_ATUAL);
-      const cls = scoreClass(totalPontuacao);
-      const pctDisplay = (totalPontuacao * 100).toFixed(1) + '%';
-      const barWidth = Math.min(100, totalPontuacao * 100).toFixed(1);
-      const periodo = ultimoMes > 0 ? `Até ${MESES_ABREV[ultimoMes-1]}/2026` : 'Sem realizado';
-      html += `<div class="kpi-index-card" onclick="showKPI('${k.id}')">
-        <div class="kic-code">${k.codigo}</div>
-        <div class="kic-name">${k.nome}</div>
-        <div class="kic-info">
-          <div class="kic-resp">Resp.: <strong>${kpiResps(k)}</strong></div>
-          <div>${k.diretoria}</div>
-        </div>
-        <div class="kic-score">
-          <div class="kic-score-bar"><div class="kic-score-fill ${cls}" style="width:${barWidth}%"></div></div>
-          <div class="kic-score-val ${cls}">${pctDisplay} ${periodo ? '· '+periodo : ''}</div>
-        </div>
-      </div>`;
-    }
-    html += `</div></div>`;
+      <div class="kpi-cards-grid">${buildKpiCardsGridHTML(list)}</div>
+    </div>`;
   }
-  document.getElementById('index-areas').innerHTML = html;
+  document.getElementById('origem-areas').innerHTML = html;
+}
+
+// Grupos começam fechados (mesmo padrão adotado na árvore de Indicadores).
+function toggleOrigemArea(el) {
+  el.parentElement.classList.toggle('open');
+}
+
+// ── View: Tarefas ───────────────────────────────────────────────────
+function showTarefas() {
+  if (!confirmLeaveOpenEditors()) return;
+  currentKpiId = null;
+  currentView = 'tarefas';
+  dashboardDrillArea = null;
+  document.getElementById('view-index').classList.remove('on');
+  document.getElementById('view-origem').classList.remove('on');
+  document.getElementById('view-kpi').classList.remove('on');
+  document.getElementById('view-users').classList.remove('on');
+  document.getElementById('view-config').classList.remove('on');
+  document.getElementById('view-tarefas').classList.add('on');
+  highlightNav(null);
+  updateNavTopActive();
+  setBreadcrumb([{ label: 'Início', action: 'showIndex()' }, { label: 'Tarefas' }]);
+  renderTarefasList();
+}
+
+function renderTarefasList() {
+  const tasks = openTasksFor(allowedKPIs());
+  if (!tasks.length) {
+    document.getElementById('tarefas-tbody').innerHTML =
+      '<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">🎉</div><div class="empty-state-t">Nenhuma tarefa em aberto</div></div></td></tr>';
+    return;
+  }
+  let rows = '';
+  for (const p of tasks) {
+    const kpi = KPIS.find(k => k.id === p.id_kpi);
+    rows += `<tr>
+      <td>
+        <div class="proj-name">${p.nome}</div>
+        <div class="proj-meta-link">${p.responsavel || ''}</div>
+      </td>
+      <td style="font-size:11px;color:var(--t3)">${kpi ? kpi.codigo + ' · ' + kpi.nome.replace('KPI ','') : '—'}</td>
+      <td class="tbl-c"><span class="status-badge ${statusBadgeClass(p.status)}">${p.status}</span></td>
+      <td class="tbl-c"><span class="prio-badge ${prioBadgeClass(p.prioridade)}">${p.prioridade}</span></td>
+      <td class="tbl-c" style="font-size:11px;white-space:nowrap">${fmtPrazo(p.prazo)}</td>
+      <td>
+        <div class="prog-wrap">
+          <div class="prog-val">${p.percentual_evolucao}%</div>
+          <div class="prog-bar"><div class="prog-fill" style="width:${p.percentual_evolucao}%"></div></div>
+        </div>
+      </td>
+      <td style="font-size:11px;max-width:200px">${p.proxima_acao || '—'}</td>
+      <td class="tbl-c"><button class="tbl-btn" onclick="openProjModal('${p.id}','${p.id_kpi}')">Editar</button></td>
+    </tr>`;
+  }
+  document.getElementById('tarefas-tbody').innerHTML = rows;
+}
+
+// Selo de contagem no botão "Tarefas" da lateral — tarefas críticas ou já
+// vencidas, pra chamar atenção sem precisar entrar na tela.
+function updateTarefasBadge() {
+  const badge = document.getElementById('nav-tarefas-badge');
+  if (!badge) return;
+  const hoje = new Date().toISOString().slice(0, 10);
+  const tasks = openTasksFor(allowedKPIs());
+  const urgentes = tasks.filter(p => p.prioridade === 'Alta' || (p.prazo && p.prazo < hoje));
+  if (urgentes.length) {
+    badge.textContent = urgentes.length;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// ── View: Configurações ─────────────────────────────────────────────
+function showConfig() {
+  if (!confirmLeaveOpenEditors()) return;
+  currentKpiId = null;
+  currentView = 'config';
+  dashboardDrillArea = null;
+  document.getElementById('view-index').classList.remove('on');
+  document.getElementById('view-origem').classList.remove('on');
+  document.getElementById('view-kpi').classList.remove('on');
+  document.getElementById('view-users').classList.remove('on');
+  document.getElementById('view-tarefas').classList.remove('on');
+  document.getElementById('view-config').classList.add('on');
+  highlightNav(null);
+  updateNavTopActive();
+  setBreadcrumb([{ label: 'Início', action: 'showIndex()' }, { label: 'Configurações' }]);
+  updateThemeToggleBtn();
+  document.getElementById('cfg-email').value = SESSION.email;
+  document.getElementById('cfg-senha').value = '';
+  document.getElementById('cfg-admin-section').style.display = isAdmin() ? '' : 'none';
+}
+
+async function saveMyAccount() {
+  const email = document.getElementById('cfg-email').value.trim().toLowerCase();
+  const senha = document.getElementById('cfg-senha').value;
+  if (!email) { toast('Informe o e-mail.', 'err'); return; }
+  setBtnLoading('btn-account-save', true);
+  try {
+    await apiUpdateMyAccount({ email, senha });
+    document.getElementById('cfg-senha').value = '';
+    if (email !== SESSION.email) { SESSION.email = email; DB.usuario.email = email; }
+    toast('✅ Conta atualizada!', 'ok');
+  } catch (e) {
+    toast('Erro ao salvar conta: ' + e.message, 'err');
+  } finally {
+    setBtnLoading('btn-account-save', false);
+  }
+}
+
+// "← Voltar" leva pro drill-down da frente do próprio KPI (em vez de sempre
+// cair no dashboard geral) — mantém o contexto de onde o usuário estava.
+function voltarDoKPI() {
+  const kpi = KPIS.find(k => k.id === currentKpiId);
+  showIndex(kpi ? kpi.area : undefined);
 }
 
 // ── View: KPI Detail ──────────────────────────────────────────────
 function showKPI(kpiId) {
   const kpi = KPIS.find(k => k.id === kpiId);
   if (!kpi || !canSeeKPI(kpi)) return;
+  if (!confirmLeaveOpenEditors()) return;
 
   currentKpiId = kpiId;
   currentView = 'kpi';
   document.getElementById('view-index').classList.remove('on');
+  document.getElementById('view-origem').classList.remove('on');
   document.getElementById('view-users').classList.remove('on');
+  document.getElementById('view-tarefas').classList.remove('on');
+  document.getElementById('view-config').classList.remove('on');
   document.getElementById('view-kpi').classList.add('on');
   highlightNav(kpiId);
+  updateNavTopActive();
   setBreadcrumb([
     { label: 'Início', action: 'showIndex()' },
-    { label: kpi.area, action: `showIndex()` },
+    { label: areaLabel(kpi.area), action: `showIndex('${kpi.area}')` },
     { label: kpi.codigo + ' · ' + kpi.nome.replace('KPI ','') },
   ]);
 
@@ -391,6 +912,7 @@ function renderProjTable(kpiId, kpi) {
 
 // ── Drawer de Edição de Meta ──────────────────────────────────────
 function openDrawer(metaId, kpiId) {
+  clearDirty('drawer');
   let meta = metaId ? DB.metas.find(m => m.id === metaId) : null;
 
   if (!meta) {
@@ -1048,6 +1570,7 @@ function openKpiEdit() {
   if (!currentKpiId) return;
   const kpi = KPIS.find(k => k.id === currentKpiId);
   if (!kpi) return;
+  clearDirty('kpi-edit-modal');
   document.getElementById('kpi-edit-codigo').value = kpi.codigo;
   document.getElementById('kpi-edit-nome').value = kpi.nome;
   document.getElementById('kpi-edit-resp').value = kpiResps(kpi);
@@ -1098,6 +1621,7 @@ function saveKpiEdit() {
 
 // ── Modal de Projeto ──────────────────────────────────────────────
 function openProjModal(projId, kpiId) {
+  clearDirty('proj-modal');
   editingProjId = projId || null;
   const kpi = KPIS.find(k => k.id === (kpiId || currentKpiId));
   const canEdit = isAdmin() || (kpi && (kpi.responsaveis||[]).includes(SESSION.responsavel));
@@ -1219,6 +1743,9 @@ function saveProject() {
     const kpi = KPIS.find(k => k.id === currentKpiId);
     renderProjTable(currentKpiId, kpi);
   }
+  if (currentView === 'tarefas') renderTarefasList();
+  if (currentView === 'index') renderDashboard();
+  updateTarefasBadge();
 }
 
 // ── Excluir Projeto ───────────────────────────────────────────────
@@ -1267,13 +1794,18 @@ function setBreadcrumb(items) {
 
 function showUsersAdmin() {
   if (!isAdmin()) return;
+  if (!confirmLeaveOpenEditors()) return;
   currentView = 'users';
   currentKpiId = null;
+  dashboardDrillArea = null;
   document.getElementById('view-index').classList.remove('on');
+  document.getElementById('view-origem').classList.remove('on');
   document.getElementById('view-kpi').classList.remove('on');
+  document.getElementById('view-tarefas').classList.remove('on');
+  document.getElementById('view-config').classList.remove('on');
   document.getElementById('view-users').classList.add('on');
-  renderNav();
-  setBreadcrumb([{ label: 'Início', action: 'showIndex()' }, { label: 'Gerenciar Acessos' }]);
+  updateNavTopActive();
+  setBreadcrumb([{ label: 'Início', action: 'showIndex()' }, { label: 'Configurações', action: 'showConfig()' }, { label: 'Gerenciar Acessos' }]);
   loadAndRenderUsers();
 }
 
@@ -1338,6 +1870,7 @@ function renderUsersTable(users) {
 }
 
 function openUserModal(emailOrNull) {
+  clearDirty('user-modal');
   editingUserEmail = emailOrNull;
   const isNew = !emailOrNull;
 
@@ -1431,33 +1964,34 @@ async function saveUser() {
     ? [...document.querySelectorAll('#usr-kpis-list input[type=checkbox]:checked')].map(c => c.value)
     : [];
 
-  if (!isLiveMode()) {
-    // ── Demo mode ───────────────────────────────────────────
-    if (isNew) {
-      if (USUARIOS.find(u => u.email === email)) { toast('E-mail já cadastrado.', 'err'); return; }
-      USUARIOS.push({ email, nome, perfil, responsavel: nome, diretoria: '', senha, ativo });
-    } else {
-      const u = USUARIOS.find(x => x.email === editingUserEmail);
-      if (u) { u.nome = nome; u.perfil = perfil; u.ativo = ativo; if (senha) u.senha = senha; }
-    }
-    // Atualiza responsaveis dos KPIs em memória
-    const oldNome = editingUserEmail
-      ? (USUARIOS.find(u => u.email === editingUserEmail) || {}).responsavel || ''
-      : '';
-    for (const k of KPIS) {
-      const tinha = (k.responsaveis || []).includes(oldNome || nome);
-      const quer  = selectedKpiIds.includes(k.id);
-      if (quer && !tinha)  k.responsaveis = [...(k.responsaveis||[]), nome];
-      if (!quer && tinha)  k.responsaveis = (k.responsaveis||[]).filter(r => r !== (oldNome||nome));
-    }
-    closeUserModal();
-    toast(isNew ? '✅ Usuário criado!' : '✅ Usuário atualizado!', 'ok');
-    loadAndRenderUsers();
-    return;
-  }
-
-  // ── Live mode (Supabase) ─────────────────────────────────
+  setBtnLoading('btn-user-save', true);
   try {
+    if (!isLiveMode()) {
+      // ── Demo mode ───────────────────────────────────────────
+      if (isNew) {
+        if (USUARIOS.find(u => u.email === email)) { toast('E-mail já cadastrado.', 'err'); return; }
+        USUARIOS.push({ email, nome, perfil, responsavel: nome, diretoria: '', senha, ativo });
+      } else {
+        const u = USUARIOS.find(x => x.email === editingUserEmail);
+        if (u) { u.nome = nome; u.perfil = perfil; u.ativo = ativo; if (senha) u.senha = senha; }
+      }
+      // Atualiza responsaveis dos KPIs em memória
+      const oldNome = editingUserEmail
+        ? (USUARIOS.find(u => u.email === editingUserEmail) || {}).responsavel || ''
+        : '';
+      for (const k of KPIS) {
+        const tinha = (k.responsaveis || []).includes(oldNome || nome);
+        const quer  = selectedKpiIds.includes(k.id);
+        if (quer && !tinha)  k.responsaveis = [...(k.responsaveis||[]), nome];
+        if (!quer && tinha)  k.responsaveis = (k.responsaveis||[]).filter(r => r !== (oldNome||nome));
+      }
+      closeUserModal();
+      toast(isNew ? '✅ Usuário criado!' : '✅ Usuário atualizado!', 'ok');
+      loadAndRenderUsers();
+      return;
+    }
+
+    // ── Live mode (Supabase) ─────────────────────────────────
     await apiSaveUser({ email, nome, perfil, senha: senha||null, ativo, isNew, currentEmail: editingUserEmail });
     await apiSyncKpiAccess(nome, selectedKpiIds, perfil);
     closeUserModal();
@@ -1467,7 +2001,11 @@ async function saveUser() {
       toast(senha ? '✅ Usuário atualizado (senha redefinida).' : '✅ Usuário atualizado!', 'ok');
     }
     loadAndRenderUsers();
-  } catch(e) { toast('Erro ao salvar: ' + e.message, 'err'); }
+  } catch(e) {
+    toast('Erro ao salvar: ' + e.message, 'err');
+  } finally {
+    setBtnLoading('btn-user-save', false);
+  }
 }
 
 function deleteUserConfirm() {

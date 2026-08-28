@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Acompanhamento de Metas | Amigos do Bem</title>
+<title>Gestão de Desempenho | Amigos do Bem</title>
 <link rel="icon" type="image/png" href="assets/logo_adb.png">
 <link rel="apple-touch-icon" href="assets/logo_adb.png">
-<link rel="stylesheet" href="style.css?v=20260828a">
+<link rel="stylesheet" href="style.css?v=20260828b">
 <script>
 // Aplica o tema salvo antes da primeira renderização, evitando flash de tela clara.
 (function(){
@@ -25,7 +25,7 @@
       <img id="logo-img" alt="Logo Amigos do Bem">
       <div class="l-brand">
         <div class="l-org">Amigos do Bem</div>
-        <div class="l-tit">Acompanhamento<br>de Metas</div>
+        <div class="l-tit">Gestão de<br>Desempenho</div>
       </div>
     </div>
     <div class="l-sub">Acesse com seu e-mail corporativo</div>
@@ -54,13 +54,12 @@
     <button class="h-nav-toggle" onclick="toggleNav()" title="Mostrar/ocultar menu lateral" aria-label="Mostrar ou ocultar o menu lateral">☰</button>
     <img class="h-logo" id="hdr-logo" alt="Logo">
     <div class="h-names">
-      <div class="h-name">Acompanhamento de Metas</div>
+      <div class="h-name">Gestão de Desempenho</div>
       <div class="h-sub-hd">Amigos do Bem</div>
     </div>
     <div class="h-sep"></div>
     <span id="mode-badge" class="mode-badge">DEMO</span>
     <div class="h-flex"></div>
-    <button class="h-theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Mudar para modo escuro" aria-label="Alternar modo claro/escuro">🌙</button>
     <div class="h-user">
       <div class="h-uname" id="hdr-uname">—</div>
       <div class="h-urole" id="hdr-urole">—</div>
@@ -82,34 +81,134 @@
 
     <!-- Sidebar de navegação -->
     <div id="nav">
-      <div class="nav-hd">
-        <div class="nav-hd-t">KPIs</div>
+      <div class="nav-top">
+        <div class="nav-top-link" id="nav-top-inicio" onclick="showIndex()">
+          <span class="nav-top-ic">🏠</span><span>Início</span>
+        </div>
+        <div class="nav-top-link" id="nav-top-origem" onclick="showOrigem()" title="Layout original, antes do novo dashboard">
+          <span class="nav-top-ic">🗂️</span><span>Origem</span>
+        </div>
+        <div class="nav-top-link" id="nav-top-indicadores" onclick="toggleIndicadoresNav()">
+          <span class="nav-top-ic">📊</span><span>Indicadores</span>
+          <span class="nav-top-arrow" id="nav-top-indicadores-arrow">▶</span>
+        </div>
+        <div class="nav-top-link" id="nav-top-tarefas" onclick="showTarefas()">
+          <span class="nav-top-ic">✅</span><span>Tarefas</span>
+          <span class="nav-top-badge" id="nav-tarefas-badge" style="display:none">0</span>
+        </div>
+        <div class="nav-top-link" id="nav-top-config" onclick="showConfig()">
+          <span class="nav-top-ic">⚙️</span><span>Configurações</span>
+        </div>
       </div>
-      <div class="nav-inner" id="nav-inner">
-        <!-- renderizado por JS -->
+      <div id="nav-indicadores-wrap">
+        <div class="nav-hd">
+          <div class="nav-hd-t">KPIs</div>
+          <input type="text" id="nav-search" class="nav-search" placeholder="Buscar indicador..." oninput="filterNav(this.value)">
+        </div>
+        <div class="nav-inner" id="nav-inner">
+          <!-- renderizado por JS -->
+        </div>
       </div>
     </div>
+    <div id="nav-scrim" onclick="toggleNav()"></div>
 
     <!-- Área de conteúdo -->
     <div id="content">
 
-      <!-- ── VIEW: INDEX ──────────────────────────────── -->
+      <!-- ── VIEW: INDEX (Dashboard) ──────────────────── -->
       <div id="view-index">
         <div class="index-welcome">
-          <h2 id="welcome-msg">Painel de Metas Corporativas</h2>
-          <p id="welcome-sub">Selecione um KPI para visualizar e editar as metas.</p>
+          <div>
+            <h2 id="welcome-msg">Painel de Metas Corporativas</h2>
+            <p id="welcome-sub">Selecione um KPI para visualizar e editar as metas.</p>
+          </div>
+          <div class="dash-updated" id="dash-updated"></div>
         </div>
-        <div id="index-areas">
+
+        <div class="dash-stats" id="dash-stats">
           <!-- renderizado por JS -->
         </div>
+
+        <div class="section dash-panorama">
+          <div class="sec-hd">
+            <div>
+              <div class="sec-title" id="dash-panorama-title">Panorama por Frente</div>
+              <div class="sec-sub" id="dash-panorama-sub">Desempenho médio por frente de monitoramento</div>
+            </div>
+            <div class="sec-btns" id="dash-panorama-btns"></div>
+          </div>
+          <div class="dash-panorama-body">
+            <div class="dash-donut-wrap" id="dash-donut-wrap">
+              <!-- SVG renderizado por JS -->
+            </div>
+            <div class="dash-legend-col">
+              <div class="dash-frente-list" id="dash-frente-list">
+                <!-- renderizado por JS -->
+              </div>
+              <div class="dash-howto">
+                <div class="dash-howto-t">💡 Como ler o painel</div>
+                <p>Cada fatia representa o desempenho médio ponderado do grupo. Quanto mais completo o anel, melhor o resultado.</p>
+                <div class="dash-howto-legend">
+                  <span><i class="dash-dot ok"></i> No alvo — atingiu 100% ou mais da meta ponderada</span>
+                  <span><i class="dash-dot warn"></i> Atenção — entre 90% e 99,9%</span>
+                  <span><i class="dash-dot err"></i> Crítico — abaixo de 90%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Visão geral: pendências e ações prioritárias (some no drill-down) -->
+        <div class="section" id="dash-pendencias-wrap">
+          <div class="sec-hd">
+            <div>
+              <div class="sec-title">Pendências e Ações Prioritárias<span class="dash-count-badge" id="dash-pend-count"></span></div>
+              <div class="sec-sub">Itens que precisam da sua atenção</div>
+            </div>
+            <div class="sec-btns">
+              <a class="dash-see-all" onclick="showTarefas()">Ver todas as tarefas →</a>
+            </div>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>Tarefa</th>
+                  <th>Indicador</th>
+                  <th class="tbl-c">Prazo</th>
+                  <th class="tbl-c">Status</th>
+                </tr>
+              </thead>
+              <tbody id="dash-pend-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Drill-down por frente: cards dos KPIs daquela frente (some na visão geral) -->
+        <div id="dash-cards-wrap" style="display:none">
+          <div class="kpi-cards-grid" id="dash-cards-grid"></div>
+        </div>
       </div>
+
+      <!-- ── VIEW: ORIGEM (layout original, antes do novo dashboard) ── -->
+      <div id="view-origem">
+        <div class="index-welcome">
+          <div>
+            <h2 id="origem-msg">Painel de Metas Corporativas</h2>
+            <p id="origem-sub">Selecione um KPI para visualizar e editar as metas.</p>
+          </div>
+        </div>
+        <div id="origem-areas">
+          <!-- renderizado por JS -->
+        </div>
+      </div><!-- /view-origem -->
 
       <!-- ── VIEW: KPI DETAIL ─────────────────────────── -->
       <div id="view-kpi">
 
         <!-- Cabeçalho de impressão — só aparece no PDF/papel, não na tela -->
         <div id="print-header">
-          <div class="ph-org">Amigos do Bem — Acompanhamento de Metas</div>
+          <div class="ph-org">Amigos do Bem — Gestão de Desempenho</div>
           <div class="ph-tit" id="print-header-tit">—</div>
           <div class="ph-meta" id="print-header-meta">—</div>
         </div>
@@ -141,7 +240,7 @@
           <div class="khd-btns">
             <button class="btn-edit-kpi" id="btn-edit-kpi" onclick="openKpiEdit()" style="display:none">✏️ Editar KPI</button>
             <button class="btn-print-kpi" id="btn-print-kpi" onclick="imprimirKPI()" title="Gerar PDF com as metas e projetos deste KPI">🖨️ Imprimir Meta</button>
-            <button class="btn-back" onclick="showIndex()">← Voltar</button>
+            <button class="btn-back" onclick="voltarDoKPI()">← Voltar</button>
           </div>
         </div>
 
@@ -173,7 +272,7 @@
                   <th class="tbl-r">Real. Acum.</th>
                   <th class="tbl-c" style="min-width:90px">Atingimento</th>
                   <th class="tbl-c">Pontuação</th>
-                  <th class="tbl-c" style="min-width:100px">Meses</th>
+                  <th class="tbl-c" style="min-width:150px">Meses</th>
                   <th class="tbl-c">Ações</th>
                 </tr>
               </thead>
@@ -251,6 +350,78 @@
         </div>
       </div><!-- /view-users -->
 
+      <!-- ── VIEW: TAREFAS ─────────────────────────────── -->
+      <div id="view-tarefas">
+        <div class="index-welcome">
+          <h2>Tarefas</h2>
+          <p>Todos os projetos e iniciativas em aberto, de todos os indicadores que você acessa, ordenados por criticidade e prazo.</p>
+        </div>
+        <div class="section">
+          <div class="tbl-wrap">
+            <table class="proj-tbl">
+              <thead>
+                <tr>
+                  <th>Projeto / Iniciativa</th>
+                  <th>Indicador</th>
+                  <th class="tbl-c">Status</th>
+                  <th class="tbl-c">Prioridade</th>
+                  <th class="tbl-c">Prazo</th>
+                  <th class="tbl-c" style="min-width:90px">Progresso</th>
+                  <th>Próxima Ação</th>
+                  <th class="tbl-c">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tarefas-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /view-tarefas -->
+
+      <!-- ── VIEW: CONFIGURAÇÕES ───────────────────────── -->
+      <div id="view-config">
+        <div class="index-welcome">
+          <h2>Configurações</h2>
+          <p>Aparência, sua conta de acesso e, para administradores, o gerenciamento de usuários.</p>
+        </div>
+
+        <div class="section">
+          <div class="sec-hd"><div><div class="sec-title">Aparência</div><div class="sec-sub">Vale para todo o sistema, só neste navegador</div></div></div>
+          <div class="cfg-body">
+            <div class="cfg-row">
+              <div>
+                <div class="cfg-row-t">Tema da interface</div>
+                <div class="cfg-row-s" id="cfg-theme-desc">Modo claro</div>
+              </div>
+              <button class="cfg-theme-btn" id="cfg-theme-btn" onclick="toggleTheme()">🌙 Ativar modo escuro</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="sec-hd"><div><div class="sec-title">Minha Conta</div><div class="sec-sub">Trocar seu e-mail ou senha de acesso</div></div></div>
+          <div class="cfg-body">
+            <div class="fg">
+              <div class="fr">
+                <div class="fi"><label>E-mail</label>
+                  <input type="email" id="cfg-email" placeholder="nome@amigosdobem.org.br">
+                </div>
+                <div class="fi"><label>Nova Senha <span class="usr-hint">(deixe vazio para manter)</span></label>
+                  <input type="text" id="cfg-senha" placeholder="Nova senha" autocomplete="new-password">
+                </div>
+              </div>
+            </div>
+            <button class="sec-btn primary" id="btn-account-save" onclick="saveMyAccount()">💾 Salvar Conta</button>
+          </div>
+        </div>
+
+        <div class="section" id="cfg-admin-section" style="display:none">
+          <div class="sec-hd">
+            <div><div class="sec-title">Gerenciar Acessos</div><div class="sec-sub">Usuários, perfis e KPIs liberados por pessoa</div></div>
+            <div class="sec-btns"><button class="sec-btn primary" onclick="showUsersAdmin()">Abrir Gerenciamento →</button></div>
+          </div>
+        </div>
+      </div><!-- /view-config -->
+
     </div><!-- /content -->
   </div><!-- /main -->
 </div><!-- /app -->
@@ -258,14 +429,14 @@
 <!-- ═══════════════════════════════════════════════════════
      DRAWER — Edição de Meta
 ════════════════════════════════════════════════════════════ -->
-<div id="drawer-overlay" onclick="closeDrawer()"></div>
+<div id="drawer-overlay" onclick="closeDrawerWithConfirm()"></div>
 <div id="drawer">
   <div class="drw-hd">
     <div>
       <div class="drw-hd-t" id="drw-title">Editar Meta</div>
       <div class="drw-hd-s" id="drw-sub">—</div>
     </div>
-    <button class="drw-close" onclick="closeDrawer()">×</button>
+    <button class="drw-close" onclick="closeDrawerWithConfirm()">×</button>
   </div>
   <div class="drw-tabs">
     <button class="drw-tab on" onclick="switchDrawerTab('dados',this)">Dados da Meta</button>
@@ -404,8 +575,8 @@
   </div><!-- /drw-body -->
   <div class="drw-act">
     <button class="btn-delete" id="btn-meta-delete" onclick="deleteMetaFromDrawer()" style="display:none">🗑️ Excluir Meta</button>
-    <button class="btn-cancel" onclick="closeDrawer()">Cancelar</button>
-    <button class="btn-save" onclick="saveDrawer()">💾 Salvar Alterações</button>
+    <button class="btn-cancel" onclick="closeDrawerWithConfirm()">Cancelar</button>
+    <button class="btn-save" id="btn-drawer-save" onclick="saveDrawer()">💾 Salvar Alterações</button>
   </div>
 </div><!-- /drawer -->
 
@@ -416,7 +587,7 @@
   <div class="modal">
     <div class="mhd">
       <div class="mhd-t" id="modal-title">Novo Projeto</div>
-      <button class="mhd-x" onclick="closeModal()">×</button>
+      <button class="mhd-x" onclick="closeModalWithConfirm()">×</button>
     </div>
     <div class="mbd">
       <input type="hidden" id="proj-id">
@@ -492,8 +663,8 @@
     </div>
     <div class="mft">
       <button class="btn-delete" id="btn-proj-delete" onclick="deleteProjectFromModal()" style="display:none">🗑️ Excluir Projeto</button>
-      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
-      <button class="btn-save" onclick="saveProject()">💾 Salvar Projeto</button>
+      <button class="btn-cancel" onclick="closeModalWithConfirm()">Cancelar</button>
+      <button class="btn-save" id="btn-proj-save" onclick="saveProject()">💾 Salvar Projeto</button>
     </div>
   </div>
 </div>
@@ -503,7 +674,7 @@
   <div class="modal" style="max-width:480px">
     <div class="mhd">
       <div class="mhd-t">Editar Cabeçalho do KPI</div>
-      <button class="mhd-x" onclick="closeKpiEdit()">×</button>
+      <button class="mhd-x" onclick="closeKpiEditWithConfirm()">×</button>
     </div>
     <div class="mbd">
       <div class="fg">
@@ -531,8 +702,8 @@
       </div>
     </div>
     <div class="mft">
-      <button class="btn-cancel" onclick="closeKpiEdit()">Cancelar</button>
-      <button class="btn-save" onclick="saveKpiEdit()">💾 Salvar</button>
+      <button class="btn-cancel" onclick="closeKpiEditWithConfirm()">Cancelar</button>
+      <button class="btn-save" id="btn-kpi-edit-save" onclick="saveKpiEdit()">💾 Salvar</button>
     </div>
   </div>
 </div>
@@ -542,7 +713,7 @@
   <div class="modal usr-modal">
     <div class="mhd">
       <div class="mhd-t" id="user-modal-title">Novo Usuário</div>
-      <button class="mhd-x" onclick="closeUserModal()">×</button>
+      <button class="mhd-x" onclick="closeUserModalWithConfirm()">×</button>
     </div>
     <div class="mbd usr-mbd">
       <div class="fg">
@@ -585,8 +756,8 @@
     </div>
     <div class="mft">
       <button class="btn-delete" id="btn-user-delete" onclick="deleteUserConfirm()" style="display:none">🗑️ Excluir</button>
-      <button class="btn-cancel" onclick="closeUserModal()">Cancelar</button>
-      <button class="btn-save" onclick="saveUser()">💾 Salvar</button>
+      <button class="btn-cancel" onclick="closeUserModalWithConfirm()">Cancelar</button>
+      <button class="btn-save" id="btn-user-save" onclick="saveUser()">💾 Salvar</button>
     </div>
   </div>
 </div>
@@ -599,10 +770,10 @@
 ════════════════════════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- ?v= força o navegador a buscar a versão nova após cada publicação (cache-busting). Incrementar a cada deploy. -->
-<script src="js/data.js?v=20260828a"></script>
-<script src="js/engine.js?v=20260828a"></script>
-<script src="js/api.js?v=20260828a"></script>
-<script src="js/app.js?v=20260828a"></script>
+<script src="js/data.js?v=20260828b"></script>
+<script src="js/engine.js?v=20260828b"></script>
+<script src="js/api.js?v=20260828b"></script>
+<script src="js/app.js?v=20260828b"></script>
 
 </body>
 </html>

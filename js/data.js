@@ -33,7 +33,7 @@ const KPIS = [
   { id:'kpi-108', codigo:'1.08', nome:'KPI MARKETING',                   area:'ADMINISTRATIVOS',       responsaveis:['Thays Aiala'],        diretoria:'Fernando Medeiros', descricao:'Comunicação institucional e campanhas de marketing', ativo:true },
   { id:'kpi-109', codigo:'1.09', nome:'KPI JURIDICO E REGULATORIOS',     area:'ADMINISTRATIVOS',       responsaveis:['Ubiratan Reis'],      diretoria:'Fernando Medeiros', descricao:'Gestão jurídica e conformidade regulatória', ativo:true },
   // ── EDUCACAO ───────────────────────────────────────────────────
-  { id:'kpi-201', codigo:'2.01', nome:'KPI EDUCACAO',                    area:'EDUCACAO',              responsaveis:['Alceu Caldeira'],     diretoria:'Alceu Caldeira',   descricao:'Centros de Transformação e programas educacionais', ativo:true },
+  { id:'kpi-201', codigo:'2.01', nome:'KPI EDUCACAO',                    area:'PROGRAMAS_SOCIAIS',     responsaveis:['Alceu Caldeira'],     diretoria:'Alceu Caldeira',   descricao:'Centros de Transformação e programas educacionais', ativo:true },
   // ── AREA_PRODUTIVA ─────────────────────────────────────────────
   { id:'kpi-301', codigo:'3.01', nome:'KPI PRODUCAO',                    area:'AREA_PRODUTIVA',        responsaveis:['Roberto Barroso','Thiago Rufino'], diretoria:'Alcione Albanesi', descricao:'Produção de amêndoa e controle de custos industriais', ativo:true },
   { id:'kpi-303', codigo:'3.03', nome:'KPI LOGISTICA',                   area:'AREA_PRODUTIVA',        responsaveis:['Edmilson Lima'],      diretoria:'Alcione Albanesi', descricao:'Gestão da cadeia logística e distribuição', ativo:true },

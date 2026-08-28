@@ -28,6 +28,19 @@ function areaLabel(area) {
   return AREA_LABELS[area] || area;
 }
 
+// Ícone só de exibição — nenhuma dependência de biblioteca de ícones/SVG externo.
+const AREA_ICONS = {
+  'ORGANIZACIONAL':        '⭐',
+  'ADMINISTRATIVOS':       '🏢',
+  'EDUCACAO':              '🎓',
+  'AREA_PRODUTIVA':        '🌾',
+  'INVESTIMENTOS_SOCIAIS': '💰',
+  'PROGRAMAS_SOCIAIS':     '🤝',
+};
+function areaIcon(area) {
+  return AREA_ICONS[area] || '📌';
+}
+
 // Exibe responsáveis do KPI; retorna 'A definir' para KPIs sem responsável definido
 function kpiResps(kpi) {
   const arr = kpi.responsaveis || [];
@@ -247,6 +260,27 @@ function statusBadgeClass(status) {
 function prioBadgeClass(prio) {
   const map = { 'Alta':'pr-alta', 'Média':'pr-media', 'Baixa':'pr-baixa' };
   return map[prio] || 'pr-baixa';
+}
+
+// ── Tarefas (Projetos e Iniciativas) — usado pelo dashboard e pela tela Tarefas
+function isTaskOpen(status) {
+  return status !== 'Concluído' && status !== 'Cancelado';
+}
+function prioWeight(prio) {
+  const map = { 'Alta': 0, 'Média': 1, 'Baixa': 2 };
+  return map[prio] ?? 3;
+}
+// Lista de projetos abertos e visíveis ao usuário logado, ordenada por
+// prioridade (Alta primeiro) e depois por prazo mais próximo (sem prazo por último).
+function openTasksFor(kpis) {
+  const ids = new Set(kpis.map(k => k.id));
+  const list = DB.projetos.filter(p => p.ativo && ids.has(p.id_kpi) && isTaskOpen(p.status));
+  list.sort((a, b) => {
+    const dp = prioWeight(a.prioridade) - prioWeight(b.prioridade);
+    if (dp !== 0) return dp;
+    return (a.prazo || '9999-99-99').localeCompare(b.prazo || '9999-99-99');
+  });
+  return list;
 }
 
 // ── Log de auditoria ──────────────────────────────────────────────
