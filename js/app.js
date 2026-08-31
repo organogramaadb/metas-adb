@@ -281,7 +281,6 @@ function renderDashboard() {
     const { totalPontuacao, ultimoMes } = calcKPI(k.id, ANO_ATUAL);
     return { kpi: k, totalPontuacao, ultimoMes, cls: ultimoMes > 0 ? scoreClass(totalPontuacao) : null };
   });
-  renderDashStatCards(stats);
 
   // "Indicadores Organizacionais" (KPI 0.00) é um indicador agregado, não uma
   // frente operacional — conta nos cards do topo e vira o centro do painel,
@@ -291,6 +290,10 @@ function renderDashboard() {
   const areas = {};
   for (const s of frenteStats) { (areas[s.kpi.area] = areas[s.kpi.area] || []).push(s); }
   if (dashboardDrillArea && !areas[dashboardDrillArea]) dashboardDrillArea = null;
+
+  // No drill-down, os cards do topo recalculam só com os KPIs da frente aberta —
+  // senão o usuário "entra" numa frente e continua vendo a contagem da empresa toda.
+  renderDashStatCards(dashboardDrillArea ? areas[dashboardDrillArea] : stats, dashboardDrillArea);
 
   renderFrenteDonut(areas, dashboardDrillArea, orgStat);
 
@@ -320,7 +323,7 @@ function renderDashboard() {
 // Stat cards do topo do dashboard. KPIs sem nenhum realizado lançado
 // (ultimoMes===0) não entram em ok/warn/err — só no total — senão contam
 // como "crítico" sem nunca terem sido apurados.
-function renderDashStatCards(stats) {
+function renderDashStatCards(stats, scopeArea) {
   const total = stats.length;
   const nOk   = stats.filter(s => s.cls === 'ok').length;
   const nWarn = stats.filter(s => s.cls === 'warn').length;
@@ -328,8 +331,9 @@ function renderDashStatCards(stats) {
   const semDados = stats.filter(s => s.cls === null).length;
   const pct = n => total ? Math.round((n / total) * 100) : 0;
 
+  const totalLabel = scopeArea ? 'Indicadores desta frente' : 'Indicadores monitorados';
   const cards = [
-    { icon:'🎯', n:total, label:'Indicadores monitorados', sub: semDados ? `${semDados} sem dado lançado` : 'Ver todos', cls:'' },
+    { icon:'🎯', n:total, label:totalLabel, sub: semDados ? `${semDados} sem dado lançado` : 'Ver todos', cls:'' },
     { icon:'✅', n:nOk,   label:'No alvo',  sub:`${pct(nOk)}% do total`,   cls:'ok' },
     { icon:'⚠️', n:nWarn, label:'Atenção',  sub:`${pct(nWarn)}% do total`, cls:'warn' },
     { icon:'❌', n:nErr,  label:'Crítico',  sub:`${pct(nErr)}% do total`,  cls:'err' },
@@ -515,10 +519,13 @@ function buildKpiCardsGridHTML(list) {
   let html = '';
   for (const k of list) {
     const { totalPontuacao, ultimoMes } = calcKPI(k.id, ANO_ATUAL);
-    const cls = scoreClass(totalPontuacao);
-    const pctDisplay = (totalPontuacao * 100).toFixed(1) + '%';
-    const barWidth = Math.min(100, totalPontuacao * 100).toFixed(1);
-    const periodo = ultimoMes > 0 ? `Até ${MESES_ABREV[ultimoMes-1]}/2026` : 'Sem realizado';
+    // Sem nenhum realizado lançado não é "crítico" (0%) — é um estado neutro
+    // à parte, senão todo KPI recém-criado nasce pintado de vermelho.
+    const hasData = ultimoMes > 0;
+    const cls = hasData ? scoreClass(totalPontuacao) : '';
+    const pctDisplay = hasData ? (totalPontuacao * 100).toFixed(1) + '%' : 'Sem dado';
+    const barWidth = hasData ? Math.min(100, totalPontuacao * 100).toFixed(1) : 0;
+    const periodo = hasData ? `Até ${MESES_ABREV[ultimoMes-1]}/2026` : '';
     html += `<div class="kpi-index-card" onclick="showKPI('${k.id}')">
       <div class="kic-code">${k.codigo}</div>
       <div class="kic-name">${k.nome}</div>
@@ -528,7 +535,7 @@ function buildKpiCardsGridHTML(list) {
       </div>
       <div class="kic-score">
         <div class="kic-score-bar"><div class="kic-score-fill ${cls}" style="width:${barWidth}%"></div></div>
-        <div class="kic-score-val ${cls}">${pctDisplay} ${periodo ? '· '+periodo : ''}</div>
+        <div class="kic-score-val ${cls}">${pctDisplay}${periodo ? ' · '+periodo : ''}</div>
       </div>
     </div>`;
   }
@@ -627,7 +634,7 @@ function renderTarefasList() {
         </div>
       </td>
       <td style="font-size:11px;max-width:200px">${p.proxima_acao || '—'}</td>
-      <td class="tbl-c"><button class="tbl-btn" onclick="openProjModal('${p.id}','${p.id_kpi}')">Editar</button></td>
+      <td class="tbl-c tbl-actions"><button class="tbl-btn" onclick="openProjModal('${p.id}','${p.id_kpi}')">Editar</button></td>
     </tr>`;
   }
   document.getElementById('tarefas-tbody').innerHTML = rows;
@@ -643,6 +650,7 @@ function updateTarefasBadge() {
   const urgentes = tasks.filter(p => p.prioridade === 'Alta' || (p.prazo && p.prazo < hoje));
   if (urgentes.length) {
     badge.textContent = urgentes.length;
+    badge.title = `${urgentes.length} tarefa(s) urgente(s) — prioridade alta ou prazo vencido`;
     badge.style.display = '';
   } else {
     badge.style.display = 'none';
@@ -848,7 +856,7 @@ function renderMetasTable(resultados, kpi) {
       <td class="tbl-pct ${cls}">${atDisplay}</td>
       <td class="tbl-pts">${pts}</td>
       <td>${dots}</td>
-      <td class="tbl-c">${editBtn}</td>
+      <td class="tbl-c tbl-actions">${editBtn}</td>
     </tr>`;
   }
 
@@ -904,7 +912,7 @@ function renderProjTable(kpiId, kpi) {
         </div>
       </td>
       <td style="font-size:11px;max-width:200px">${p.proxima_acao || '—'}</td>
-      <td class="tbl-c" style="white-space:nowrap">${actionBtns}</td>
+      <td class="tbl-c tbl-actions" style="white-space:nowrap">${actionBtns}</td>
     </tr>`;
   }
   document.getElementById('proj-tbody').innerHTML = rows;
@@ -970,10 +978,13 @@ function openDrawer(metaId, kpiId) {
   document.getElementById('drw-ult-at').value  = meta.ult_at || '—';
 
   buildMonthGrids(meta);
-  // Sempre força a aba "Dados da Meta" como ativa ao abrir — sem passar um botão
-  // "atual", que poderia sobrar marcado de uma sessão anterior do drawer (era a
-  // causa do destaque aparecer em "Realizado Mensal" com o conteúdo errado).
-  switchDrawerTab('dados');
+  // Foca direto em "Realizado Mensal" ao abrir uma meta existente — é a ação mais
+  // frequente do dia a dia (lançar o resultado do mês), então não deve ficar atrás
+  // do formulário de configuração. Meta nova ainda não tem o que realizar, então
+  // continua abrindo em "Dados da Meta" pra ser configurada primeiro. Sempre passamos
+  // o nome da aba explicitamente (sem depender de um botão "atual" já marcado), pra
+  // não sobrar destaque de uma sessão anterior do drawer com o conteúdo errado.
+  switchDrawerTab(meta._isNew ? 'dados' : 'realizado');
 
   // Botão excluir: só para meta existente (não nova) e com permissão de edição
   const delBtn = document.getElementById('btn-meta-delete');
@@ -1863,7 +1874,7 @@ function renderUsersTable(users) {
       <td class="tbl-c"><span class="usr-badge-perfil">${perfil}</span></td>
       <td>${kpisHtml}</td>
       <td class="tbl-c">${statusBadge}</td>
-      <td class="tbl-c"><button class="tbl-btn" onclick="openUserModal('${u.email}')">Editar</button></td>
+      <td class="tbl-c tbl-actions"><button class="tbl-btn" onclick="openUserModal('${u.email}')">Editar</button></td>
     </tr>`;
   }
   document.getElementById('users-tbody').innerHTML = rows;

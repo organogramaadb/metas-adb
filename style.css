@@ -351,6 +351,11 @@ table.tbl tbody tr:hover td{background:var(--surface-2)}
 .tbl-btn:hover{border-color:var(--t3);color:var(--t1)}
 .tbl-btn-del{background:transparent;border:1px solid #fca5a5;border-radius:3px;padding:3px 7px;font-size:11px;color:#dc2626;cursor:pointer;margin-left:4px;line-height:1}
 .tbl-btn-del:hover{background:#fee2e2;border-color:#dc2626}
+/* Coluna "Ações" fixa na borda direita ao rolar a tabela horizontalmente —
+   senão a ação mais comum (Editar) fica escondida atrás de scroll. */
+.tbl-actions{position:sticky;right:0;box-shadow:-6px 0 6px -6px rgba(0,0,0,.18)}
+table.tbl th.tbl-actions,table.proj-tbl th.tbl-actions{background:var(--surface-2)}
+table.tbl td.tbl-actions,table.proj-tbl td.tbl-actions{background:var(--surface)}
 .month-dots{display:flex;gap:3px;flex-wrap:nowrap;padding:2px 0}
 .mdot{width:8px;height:8px;border-radius:50%;background:var(--surface-2);flex-shrink:0;cursor:default}
 .mdot.meta{background:var(--t5)}
@@ -504,6 +509,11 @@ table.proj-tbl tbody tr:hover td{background:var(--surface-2)}
   .card-meta{min-width:calc(50% - 6px)}
   .dash-stats{grid-template-columns:repeat(2,1fr)}
   .dash-panorama-body{padding:14px}
+  /* Cabeçalho do KPI: título longo ("INDICADORES ORGANIZACIONAIS") já disputa
+     espaço com os 3 botões de ação bem antes do breakpoint de celular — dá mais
+     respiro empilhando cedo, não só quando aperta de verdade. */
+  .kpi-header{flex-direction:column;align-items:stretch}
+  .khd-btns{margin-left:0;margin-top:4px;flex-wrap:wrap}
 }
 @media(max-width:600px){
   .kpi-cards-grid{grid-template-columns:1fr}
@@ -523,11 +533,6 @@ table.proj-tbl tbody tr:hover td{background:var(--surface-2)}
   .h-sub-hd,.h-sep,.mode-badge,.h-urole{display:none}
   .h-name{font-size:13px;max-width:38vw}
   .h-uname{max-width:22vw}
-  /* Cabeçalho do KPI: os 3 botões ao lado do título não cabem lado a lado
-     em tela estreita — isso empurrava #content pra rolagem horizontal
-     escondida, cortando o conteúdo à esquerda. Empilha em vez de espremer. */
-  .kpi-header{flex-direction:column;align-items:stretch}
-  .khd-btns{margin-left:0;margin-top:4px;flex-wrap:wrap}
 }
 /* ── Gerenciamento de Usuários ────────────────────────────────────── */
 #view-users{display:none;padding:20px;overflow-y:auto;flex:1}
