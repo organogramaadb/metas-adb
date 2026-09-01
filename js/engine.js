@@ -236,6 +236,55 @@ function calcKPI(kpiId, ano) {
   return { totalPontuacao, resultados, ultimoMes };
 }
 
+// Reaplica a mesma lógica de scoringAt do calcMeta, mas cortando os meses em
+// `cutoffMes` em vez de detectar o último mês automaticamente — usado só pra
+// comparar tendência (mês atual vs anterior), nunca pro cálculo oficial do KPI.
+// Retorna null quando não dá pra "voltar no tempo": meta em modo manual (valor
+// acumulado único, sem série mensal) ou sem nenhum dado até o cutoff.
+function calcMetaScoringAtCutoff(meta, ano, cutoffMes) {
+  if (cutoffMes <= 0) return null;
+  if ((meta.tipo_acumulado || 'soma') === 'manual') return null;
+  const acumulado = meta.tipo_acumulado || 'soma';
+  const registros = DB.metasMensais.filter(m => m.id_meta === meta.id && m.ano === ano);
+  let metaSum = 0, realSum = 0, nMeta = 0, nReal = 0;
+  for (const r of registros) {
+    if (r.mes > cutoffMes) continue;
+    const vm = (r.valor_meta      != null && r.valor_meta      !== '') ? parseFloat(r.valor_meta)      : null;
+    const vr = (r.valor_realizado != null && r.valor_realizado !== '') ? parseFloat(r.valor_realizado) : null;
+    if (vm !== null) { metaSum += vm; nMeta++; }
+    if (vr !== null) { realSum += vr; nReal++; }
+  }
+  if (nMeta === 0 && nReal === 0) return null; // sem nenhum lançamento até esse mês
+  const metaAc = acumulado === 'media' ? (nMeta > 0 ? metaSum / nMeta : 0) : metaSum;
+  const realAc = acumulado === 'media' ? (nReal > 0 ? realSum / nReal : 0) : realSum;
+  if (metaAc === 0 && realAc === 0) return 1;
+  if (metaAc === 0 || realAc === 0) return null;
+  return meta.bom_quando === 'maior' ? realAc / metaAc : metaAc / realAc;
+}
+
+/**
+ * Tendência do KPI: compara a pontuação total no último mês apurado contra o
+ * mês anterior. Retorna 'alta' | 'estavel' | 'baixa', ou null quando não dá
+ * pra comparar (só 1 mês de histórico, ou nenhuma meta comparável — ex.: só
+ * metas em modo manual).
+ */
+function calcKPITrend(kpiId, ano) {
+  const { totalPontuacao, resultados, ultimoMes } = calcKPI(kpiId, ano);
+  if (ultimoMes <= 1) return null;
+  let prevTotal = 0, comparavel = false;
+  for (const r of resultados) {
+    const prevScoringAt = calcMetaScoringAtCutoff(r.meta, ano, ultimoMes - 1);
+    if (prevScoringAt === null) continue;
+    comparavel = true;
+    if (prevScoringAt >= 1.0)      prevTotal += r.meta.peso;
+    else if (prevScoringAt >= 0.9) prevTotal += r.meta.peso * ((prevScoringAt - 0.9) / 0.1);
+  }
+  if (!comparavel) return null;
+  const delta = totalPontuacao - prevTotal;
+  if (Math.abs(delta) < 0.005) return 'estavel'; // variação < 0,5 p.p. — não vale destacar
+  return delta > 0 ? 'alta' : 'baixa';
+}
+
 // ── Helpers de cor e status ───────────────────────────────────────
 function scoreClass(pct) {
   // pct = 0..1 representando 0%..100%

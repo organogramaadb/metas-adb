@@ -332,14 +332,16 @@ function renderDashStatCards(stats, scopeArea) {
   const pct = n => total ? Math.round((n / total) * 100) : 0;
 
   const totalLabel = scopeArea ? 'Indicadores desta frente' : 'Indicadores monitorados';
+  // Cada card leva pra a lista filtrada em Origem — "3 Crítico" não é só uma
+  // contagem, é a pergunta "quem está crítico agora?" já respondida num clique.
   const cards = [
-    { icon:'🎯', n:total, label:totalLabel, sub: semDados ? `${semDados} sem dado lançado` : 'Ver todos', cls:'' },
-    { icon:'✅', n:nOk,   label:'No alvo',  sub:`${pct(nOk)}% do total`,   cls:'ok' },
-    { icon:'⚠️', n:nWarn, label:'Atenção',  sub:`${pct(nWarn)}% do total`, cls:'warn' },
-    { icon:'❌', n:nErr,  label:'Crítico',  sub:`${pct(nErr)}% do total`,  cls:'err' },
+    { icon:'🎯', n:total, label:totalLabel, sub: semDados ? `${semDados} sem dado lançado` : 'Ver todos', cls:'', filter:null },
+    { icon:'✅', n:nOk,   label:'No alvo',  sub:`${pct(nOk)}% do total`,   cls:'ok',   filter:'ok' },
+    { icon:'⚠️', n:nWarn, label:'Atenção',  sub:`${pct(nWarn)}% do total`, cls:'warn', filter:'warn' },
+    { icon:'❌', n:nErr,  label:'Crítico',  sub:`${pct(nErr)}% do total`,  cls:'err',  filter:'err' },
   ];
   document.getElementById('dash-stats').innerHTML = cards.map(c => `
-    <div class="dash-stat-card">
+    <div class="dash-stat-card" onclick="showOrigem(${c.filter ? `'${c.filter}'` : ''})" title="Ver lista de indicadores">
       <div class="dash-stat-ic ${c.cls}">${c.icon}</div>
       <div>
         <div class="dash-stat-n">${c.n}</div>
@@ -523,9 +525,18 @@ function buildKpiCardsGridHTML(list) {
     // à parte, senão todo KPI recém-criado nasce pintado de vermelho.
     const hasData = ultimoMes > 0;
     const cls = hasData ? scoreClass(totalPontuacao) : '';
-    const pctDisplay = hasData ? (totalPontuacao * 100).toFixed(1) + '%' : 'Sem dado';
+    // Só o Administrador realmente lança o realizado (canEditMeta) — o CTA só
+    // aparece pra quem pode agir; pra quem só visualiza, fica um aviso neutro.
+    const canLancar = !hasData && isAdmin();
+    const pctDisplay = hasData ? (totalPontuacao * 100).toFixed(1) + '%' : (canLancar ? 'Ainda não lançado' : 'Sem dado');
     const barWidth = hasData ? Math.min(100, totalPontuacao * 100).toFixed(1) : 0;
-    const periodo = hasData ? `Até ${MESES_ABREV[ultimoMes-1]}/2026` : '';
+    const periodo = hasData ? `Até ${MESES_ABREV[ultimoMes-1]}/2026` : (canLancar ? 'Lançar agora →' : '');
+    // Seta de tendência: compara a pontuação do último mês apurado com a do
+    // mês anterior — sinaliza "melhorando/piorando" sem exigir um gráfico.
+    const trend = hasData ? calcKPITrend(k.id, ANO_ATUAL) : null;
+    const trendIcon = { alta:'↑', baixa:'↓', estavel:'→' }[trend] || '';
+    const trendCls  = { alta:'trend-up', baixa:'trend-down', estavel:'trend-flat' }[trend] || '';
+    const trendTitle = { alta:'Melhorou em relação ao mês anterior', baixa:'Piorou em relação ao mês anterior', estavel:'Estável em relação ao mês anterior' }[trend] || '';
     html += `<div class="kpi-index-card" onclick="showKPI('${k.id}')">
       <div class="kic-code">${k.codigo}</div>
       <div class="kic-name">${k.nome}</div>
@@ -535,7 +546,7 @@ function buildKpiCardsGridHTML(list) {
       </div>
       <div class="kic-score">
         <div class="kic-score-bar"><div class="kic-score-fill ${cls}" style="width:${barWidth}%"></div></div>
-        <div class="kic-score-val ${cls}">${pctDisplay}${periodo ? ' · '+periodo : ''}</div>
+        <div class="kic-score-val ${cls}${canLancar ? ' kic-cta' : ''}">${pctDisplay}${trendIcon ? ` <span class="kic-trend ${trendCls}" title="${trendTitle}">${trendIcon}</span>` : ''}${periodo ? ' · '+periodo : ''}</div>
       </div>
     </div>`;
   }
@@ -550,7 +561,10 @@ function renderKpiCardsGrid(list) {
 // Pedido explícito: manter disponível o formato antigo — todas as frentes
 // (incluindo Indicadores Organizacionais) lado a lado, cada uma com seus
 // cards, recolhível por grupo. Não duplica lógica de card (buildKpiCardsGridHTML).
-function showOrigem() {
+// statusFilter (opcional): 'ok' | 'warn' | 'err' | 'semdados' — vindo do clique
+// num stat card do dashboard. Mostra uma lista única filtrada, sem agrupar por
+// frente, em vez da árvore de grupos recolhíveis padrão.
+function showOrigem(statusFilter) {
   if (!confirmLeaveOpenEditors()) return;
   currentKpiId = null;
   currentView = 'origem';
@@ -570,6 +584,25 @@ function showOrigem() {
   document.getElementById('origem-sub').textContent = canSeeAll() ? 'Visão consolidada de todos os KPIs.' : 'Seus KPIs e metas de responsabilidade.';
 
   const kpis = allowedKPIs();
+
+  if (statusFilter) {
+    const filtered = kpis.filter(k => {
+      const { totalPontuacao, ultimoMes } = calcKPI(k.id, ANO_ATUAL);
+      const cls = ultimoMes > 0 ? scoreClass(totalPontuacao) : null;
+      return statusFilter === 'semdados' ? cls === null : cls === statusFilter;
+    });
+    const filterLabel = { ok:'No alvo', warn:'Atenção', err:'Crítico', semdados:'Sem dado lançado' }[statusFilter];
+    document.getElementById('origem-areas').innerHTML = `
+      <div class="origem-filter-banner">
+        <span><strong>${filtered.length}</strong> indicador(es) — <strong>${filterLabel}</strong></span>
+        <button class="sec-btn" onclick="showOrigem()">✕ Limpar filtro</button>
+      </div>
+      <div class="kpi-cards-grid">${filtered.length
+        ? buildKpiCardsGridHTML(filtered)
+        : '<div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-t">Nenhum indicador nessa situação</div></div>'}</div>`;
+    return;
+  }
+
   const areas = {};
   for (const k of kpis) { (areas[k.area] = areas[k.area] || []).push(k); }
 
