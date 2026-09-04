@@ -34,6 +34,7 @@ if (isLiveMode()) {
     if (_intentionalLogout) { _intentionalLogout = false; return; }
     if (SESSION) {
       toast('⚠️ Sua sessão expirou. Faça login novamente.', 'err');
+      encerrarSessaoAcesso();
       logout();
       DB.usuario = null;
       document.getElementById('app').classList.remove('on');
@@ -100,18 +101,79 @@ async function doLogin(event) {
   SESSION = DB.usuario;
 
   await loadData();
+  registrarLoginAcesso();   // login explícito → sempre registra um acesso
   initApp();
 }
 
 // ── doLogout ──────────────────────────────────────────────────
 async function doLogout() {
   if (!confirmLeaveOpenEditors()) return;
+  await encerrarSessaoAcesso();   // grava LOGOUT antes do signOut invalidar o token
   if (isLiveMode()) { _intentionalLogout = true; await _supa.auth.signOut(); }
   logout();   // engine.js — limpa SESSION
   DB.usuario = null;
   document.getElementById('app').classList.remove('on');
   document.getElementById('lo').style.display = 'flex';
   document.getElementById('inp-pwd').value = '';
+}
+
+// ── Registro de acesso (auditoria de login/sessão) ────────────────
+// Grava LOGIN/LOGOUT em logs_auditoria (reaproveita a tabela existente). Cada
+// sessão tem um id próprio (id_registro) para parear LOGIN↔LOGOUT e calcular a
+// duração; um marcador em localStorage guarda a sessão corrente para o logout.
+// Modelo: TODO login explícito registra um acesso (nunca é engolido); a sessão
+// anterior que tenha ficado aberta é fechada nesse momento (troca de usuário ou
+// fechamento sem "Sair"), evitando várias sessões "em aberto"; F5 não cria nada
+// (o marcador persiste e a sessão só fecha no "Sair" ou no próximo login).
+// Ressalva: em modo básico o INSERT é do cliente (autor por texto) — serve de
+// visibilidade de gestão, não de prova forense (a versão à prova de adulteração
+// exige RPC SECURITY DEFINER, junto da fase de DDL aprovada).
+function _sessaoAtiva() {
+  try { return JSON.parse(localStorage.getItem('metasSessaoAcesso') || 'null'); } catch (e) { return null; }
+}
+function _gravaSessaoAcesso(s) {
+  try { localStorage.setItem('metasSessaoAcesso', JSON.stringify(s)); } catch (e) {}
+}
+function _limpaSessaoAcesso() {
+  try { localStorage.removeItem('metasSessaoAcesso'); } catch (e) {}
+}
+
+function logAcesso(acao, sessaoId, usuario) {
+  const u = usuario || (SESSION && SESSION.email);
+  if (!u) return;
+  const entry = {
+    id: 'log-' + Date.now() + '-' + acao,
+    data_hora: new Date().toISOString(),   // ISO: comparável para calcular a duração
+    usuario: u,
+    acao,                                  // 'LOGIN' | 'LOGOUT'
+    tabela: 'acesso',
+    id_registro: sessaoId,
+    campo: '', antes: '', depois: '',
+    _synced: false,
+  };
+  DB.logs.unshift(entry);
+  return apiAddLog(entry).then(() => { entry._synced = true; }).catch(() => {});
+}
+
+// Login explícito (doLogin): sempre abre um acesso visível; se sobrou uma
+// sessão anterior aberta (marcador presente), fecha-a antes para não acumular.
+function registrarLoginAcesso() {
+  if (!SESSION) return;
+  const s = _sessaoAtiva();
+  if (s && s.sessaoId) logAcesso('LOGOUT', s.sessaoId, s.email);   // fecha a anterior
+  const sessaoId = uid('sess');
+  _gravaSessaoAcesso({ sessaoId, email: SESSION.email });
+  logAcesso('LOGIN', sessaoId);
+}
+
+// Encerra a sessão (Sair ou expiração) — grava LOGOUT para fechar o par.
+// Aguarda a gravação: no logout, o signOut() invalida o token logo em seguida,
+// então o INSERT do LOGOUT precisa partir antes disso (senão a sessão fica
+// "em aberto" à toa).
+async function encerrarSessaoAcesso() {
+  const s = _sessaoAtiva();
+  if (s && s.sessaoId) { try { await logAcesso('LOGOUT', s.sessaoId, s.email); } catch (e) {} }
+  _limpaSessaoAcesso();
 }
 
 // ── loadData — carga completa do banco ────────────────────────

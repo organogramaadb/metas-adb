@@ -8,7 +8,7 @@ let drawerMetaId = null;
 let drawerKpiId = null;   // KPI do drawer aberto — usado pelo mural de comentários
 let drawerCurrentTab = 'dados';
 let editingProjId = null;
-let currentView = 'index';   // 'index' | 'kpi' | 'users' | 'tarefas' | 'config'
+let currentView = 'index';   // 'index' | 'origem' | 'kpi' | 'users' | 'tarefas' | 'config' | 'audit'
 let editingUserEmail = null; // null = novo usuário
 let dashboardDrillArea = null; // frente em foco no dashboard (null = visão geral)
 
@@ -108,6 +108,8 @@ function initApp() {
   initIndicadoresNavState();
   initDirtyTracking();
   updateTarefasBadge();
+  // Auditoria é só p/ Administrador e Diretoria N1 (espelha a RLS de logs_auditoria)
+  document.getElementById('nav-top-audit').style.display = canSeeAll() ? '' : 'none';
   showIndex();
 }
 
@@ -203,7 +205,7 @@ function initIndicadoresNavState() {
 
 // ── Destaque do item ativo no bloco de topo da lateral ─────────────
 function updateNavTopActive() {
-  const map = { index: 'nav-top-inicio', origem: 'nav-top-origem', kpi: 'nav-top-indicadores', tarefas: 'nav-top-tarefas', config: 'nav-top-config', users: 'nav-top-config' };
+  const map = { index: 'nav-top-inicio', origem: 'nav-top-origem', kpi: 'nav-top-indicadores', tarefas: 'nav-top-tarefas', config: 'nav-top-config', users: 'nav-top-config', audit: 'nav-top-audit' };
   document.querySelectorAll('.nav-top-link').forEach(el => el.classList.remove('sel'));
   const id = map[currentView];
   if (id) document.getElementById(id).classList.add('sel');
@@ -250,6 +252,7 @@ function showIndex(area) {
   document.getElementById('view-tarefas').classList.remove('on');
   document.getElementById('view-config').classList.remove('on');
   document.getElementById('view-origem').classList.remove('on');
+  document.getElementById('view-audit').classList.remove('on');
   document.getElementById('view-index').classList.add('on');
   highlightNav(null);
   updateNavTopActive();
@@ -574,6 +577,7 @@ function showOrigem(statusFilter) {
   document.getElementById('view-users').classList.remove('on');
   document.getElementById('view-tarefas').classList.remove('on');
   document.getElementById('view-config').classList.remove('on');
+  document.getElementById('view-audit').classList.remove('on');
   document.getElementById('view-origem').classList.add('on');
   highlightNav(null);
   updateNavTopActive();
@@ -634,6 +638,7 @@ function showTarefas() {
   document.getElementById('view-kpi').classList.remove('on');
   document.getElementById('view-users').classList.remove('on');
   document.getElementById('view-config').classList.remove('on');
+  document.getElementById('view-audit').classList.remove('on');
   document.getElementById('view-tarefas').classList.add('on');
   highlightNav(null);
   updateNavTopActive();
@@ -701,6 +706,7 @@ function showConfig() {
   document.getElementById('view-kpi').classList.remove('on');
   document.getElementById('view-users').classList.remove('on');
   document.getElementById('view-tarefas').classList.remove('on');
+  document.getElementById('view-audit').classList.remove('on');
   document.getElementById('view-config').classList.add('on');
   highlightNav(null);
   updateNavTopActive();
@@ -728,6 +734,222 @@ async function saveMyAccount() {
   }
 }
 
+// ── View: Auditoria (Admin / Diretoria N1) ──────────────────────────
+// Busca dedicada em logs_auditoria (RLS restringe a leitura a admin/diretoria).
+// Acessos e Alterações vêm em consultas SEPARADAS, cada uma com sua própria
+// janela — assim o volume de um nunca empurra o outro para fora (o que esvaziava
+// a aba). Duas abas: "Acessos" (sessões LOGIN↔LOGOUT com duração) e "Alterações"
+// (edições de meta/realizado/projeto/KPI, por quem).
+let auditTab = 'acessos';
+let _auditAcessos = [];
+let _auditAlteracoes = [];
+
+async function carregarAuditoria() {
+  let acessos = null, alteracoes = null;
+  if (isLiveMode()) {
+    try {
+      const [a, b] = await Promise.all([
+        _supa.from('logs_auditoria').select('*').eq('tabela_afetada', 'acesso')
+             .order('data_hora', { ascending: false }).limit(1000),
+        _supa.from('logs_auditoria').select('*').in('acao', ['UPDATE', 'INSERT', 'DELETE'])
+             .order('data_hora', { ascending: false }).limit(1000),
+      ]);
+      if (a.error || b.error) throw (a.error || b.error);
+      acessos    = (a.data || []).map(_normLog);
+      alteracoes = (b.data || []).map(_normLog);
+    } catch (e) {
+      console.warn('Auditoria: busca dedicada falhou, usando cache local.', e);
+    }
+  }
+  if (acessos === null) {   // demo, ou falha na busca → cai no cache local (DB.logs)
+    const all = (DB.logs || []).map(_normLog);
+    acessos    = all.filter(l => l.tabela === 'acesso');
+    alteracoes = all.filter(l => (l.acao === 'UPDATE' || l.acao === 'INSERT' || l.acao === 'DELETE') && l.tabela !== 'acesso');
+  }
+  _auditAcessos = acessos;
+  _auditAlteracoes = alteracoes;
+}
+
+async function showAuditoria() {
+  if (!confirmLeaveOpenEditors()) return;
+  if (!canSeeAll()) return;   // gate de UI; a RLS é a defesa real
+  currentKpiId = null;
+  currentView = 'audit';
+  dashboardDrillArea = null;
+  document.getElementById('view-index').classList.remove('on');
+  document.getElementById('view-origem').classList.remove('on');
+  document.getElementById('view-kpi').classList.remove('on');
+  document.getElementById('view-users').classList.remove('on');
+  document.getElementById('view-tarefas').classList.remove('on');
+  document.getElementById('view-config').classList.remove('on');
+  document.getElementById('view-audit').classList.add('on');
+  highlightNav(null);
+  updateNavTopActive();
+  setBreadcrumb([{ label: 'Início', action: 'showIndex()' }, { label: 'Auditoria' }]);
+  document.getElementById('aud-body').innerHTML = '<div class="empty-state"><div class="empty-state-icon">⏳</div><div class="empty-state-t">Carregando…</div></div>';
+  await carregarAuditoria();
+  renderAuditoria();
+}
+
+function setAuditTab(tab) {
+  auditTab = tab;
+  renderAuditoria();
+}
+
+// Normaliza as duas formas de registro que convivem em DB.logs: o formato do
+// servidor (nome_usuario/tabela_afetada/campo_alterado/valor_anterior/valor_novo)
+// e o em-memória do addLog (usuario/tabela/campo/antes/depois).
+function _normLog(l) {
+  return {
+    data_hora:   l.data_hora,
+    usuario:     l.nome_usuario   != null ? l.nome_usuario   : (l.usuario || ''),
+    acao:        l.acao || '',
+    tabela:      l.tabela_afetada != null ? l.tabela_afetada : (l.tabela  || ''),
+    id_registro: l.id_registro || '',
+    campo:       l.campo_alterado != null ? l.campo_alterado : (l.campo   || ''),
+    antes:       l.valor_anterior != null ? l.valor_anterior : (l.antes   || ''),
+    depois:      l.valor_novo     != null ? l.valor_novo     : (l.depois  || ''),
+  };
+}
+function _logMs(dh) {
+  if (!dh) return NaN;
+  const t = Date.parse(dh);                 // ISO (acessos e logs do servidor)
+  if (!isNaN(t)) return t;
+  const m = String(dh).match(/^(\d{2})\/(\d{2})\/(\d{4})[ ,]+(\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (m) return new Date(+m[3], +m[2]-1, +m[1], +m[4], +m[5], +(m[6]||0)).getTime();  // pt-BR
+  return NaN;
+}
+function _fmtDataHora(dh) {
+  const ms = _logMs(dh);
+  if (isNaN(ms)) return dh || '—';
+  return new Date(ms).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+function _fmtDuracao(ms) {
+  if (ms == null || isNaN(ms) || ms < 0) return '—';
+  const min = Math.round(ms / 60000);
+  if (min < 1) return '< 1 min';
+  if (min < 60) return min + ' min';
+  const h = Math.floor(min / 60), r = min % 60;
+  return r ? `${h}h ${r}min` : `${h}h`;
+}
+function _escAudit(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+}
+function _humanizaAlteracao(l) {
+  const t = l.tabela, c = l.campo;
+  if (t === 'metas_mensais' && c === 'valor_realizado') return 'Realizado (mensal)';
+  if (t === 'metas_mensais' && c === 'valor_meta')      return 'Meta (mensal)';
+  if (t === 'metas')    return 'Meta · ' + (c || '');
+  if (t === 'projetos') return 'Projeto · ' + (c || '');
+  if (t === 'kpis')     return 'KPI · ' + (c || '');
+  return (t || '') + (c ? ' · ' + c : '');
+}
+function _tipoAlteracao(l) {
+  if (l.tabela === 'metas_mensais') return l.campo === 'valor_realizado' ? 'realizado' : 'meta';
+  if (l.tabela === 'metas')    return 'meta';
+  if (l.tabela === 'projetos') return 'projeto';
+  if (l.tabela === 'kpis')     return 'kpi';
+  return 'outro';
+}
+// Pareia LOGIN/LOGOUT da mesma sessão (id_registro) numa linha com duração.
+function _buildSessoes(logs) {
+  const porSessao = {};
+  for (const l of logs) {
+    if (l.tabela !== 'acesso') continue;
+    if (l.acao !== 'LOGIN' && l.acao !== 'LOGOUT') continue;
+    const k = l.id_registro || (l.usuario + '|' + l.data_hora);
+    const s = (porSessao[k] = porSessao[k] || {});
+    s.usuario = l.usuario;
+    if (l.acao === 'LOGIN') s.inicio = _logMs(l.data_hora);
+    else                    s.fim    = _logMs(l.data_hora);
+  }
+  // Exige um LOGIN (início): um LOGOUT solto (ex.: fechamento de uma sessão cujo
+  // LOGIN já foi apagado, ou fora da janela de 200) não vira uma linha fantasma.
+  const arr = Object.values(porSessao).filter(s => s.inicio != null);
+  arr.sort((a, b) => b.inicio - a.inicio);
+  return arr;
+}
+
+function renderAuditoria() {
+  // Select de usuários (preserva a seleção atual) — de acessos + alterações
+  const selUser = document.getElementById('aud-user');
+  const curUser = selUser.value;
+  const usuarios = [...new Set([..._auditAcessos, ..._auditAlteracoes].map(l => l.usuario).filter(Boolean))].sort();
+  selUser.innerHTML = '<option value="">Todos os usuários</option>' +
+    usuarios.map(u => `<option${u === curUser ? ' selected' : ''}>${_escAudit(u)}</option>`).join('');
+
+  document.getElementById('aud-tab-acessos').classList.toggle('on', auditTab === 'acessos');
+  document.getElementById('aud-tab-alteracoes').classList.toggle('on', auditTab === 'alteracoes');
+  document.getElementById('aud-tipo-wrap').style.display = auditTab === 'alteracoes' ? '' : 'none';
+  document.getElementById('aud-q').style.display         = auditTab === 'alteracoes' ? '' : 'none';
+
+  const fUser = selUser.value;
+  const fDe = document.getElementById('aud-de').value;
+  const fAte = document.getElementById('aud-ate').value;
+  const deMs  = fDe  ? Date.parse(fDe  + 'T00:00:00') : null;
+  const ateMs = fAte ? Date.parse(fAte + 'T23:59:59') : null;
+  const passaData = ms => (deMs == null || ms >= deMs) && (ateMs == null || ms <= ateMs);
+  const passaUser = u => !fUser || u === fUser;
+
+  const body = document.getElementById('aud-body');
+
+  if (auditTab === 'acessos') {
+    const sess = _buildSessoes(_auditAcessos).filter(s => passaUser(s.usuario) && passaData(s.inicio != null ? s.inicio : s.fim));
+    if (!sess.length) {
+      body.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🕑</div><div class="empty-state-t">Nenhum acesso registrado no período</div></div>';
+      return;
+    }
+    let rows = '';
+    for (const s of sess) {
+      const dur = (s.inicio != null && s.fim != null) ? _fmtDuracao(s.fim - s.inicio) : '—';
+      const situacao = s.fim != null
+        ? '<span class="aud-badge fechada">Encerrada</span>'
+        : '<span class="aud-badge aberta">Em aberto</span>';
+      rows += `<tr>
+        <td><strong>${_escAudit(s.usuario)}</strong></td>
+        <td style="white-space:nowrap">${s.inicio != null ? _fmtDataHora(new Date(s.inicio).toISOString()) : '—'}</td>
+        <td style="white-space:nowrap">${s.fim != null ? _fmtDataHora(new Date(s.fim).toISOString()) : '—'}</td>
+        <td class="tbl-c" style="white-space:nowrap">${dur}</td>
+        <td class="tbl-c">${situacao}</td>
+      </tr>`;
+    }
+    body.innerHTML = `<table class="tbl"><thead><tr>
+      <th>Usuário</th><th>Início</th><th>Fim</th><th class="tbl-c">Duração</th><th class="tbl-c">Situação</th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
+    return;
+  }
+
+  // Aba "Alterações"
+  const fTipo = document.getElementById('aud-tipo').value;
+  const fQ = (document.getElementById('aud-q').value || '').toLowerCase().trim();
+  let alt = _auditAlteracoes.filter(l => (l.acao === 'UPDATE' || l.acao === 'INSERT' || l.acao === 'DELETE') && l.tabela !== 'acesso');
+  alt = alt.filter(l => passaUser(l.usuario) && passaData(_logMs(l.data_hora)));
+  if (fTipo) alt = alt.filter(l => _tipoAlteracao(l) === fTipo);
+  if (fQ)    alt = alt.filter(l => (l.usuario + ' ' + l.campo + ' ' + l.tabela + ' ' + l.antes + ' ' + l.depois + ' ' + l.id_registro).toLowerCase().includes(fQ));
+  alt.sort((a, b) => _logMs(b.data_hora) - _logMs(a.data_hora));
+
+  if (!alt.length) {
+    body.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><div class="empty-state-t">Nenhuma alteração no período/filtro</div></div>';
+    return;
+  }
+  let rows = '';
+  for (const l of alt) {
+    let mudou;
+    if (l.acao === 'INSERT')      mudou = `<span class="aud-badge fechada">criado</span> ${_escAudit(l.depois)}`;
+    else if (l.acao === 'DELETE') mudou = `<span class="aud-badge aberta">excluído</span> ${_escAudit(l.antes)}`;
+    else                          mudou = `${_escAudit(l.antes) || '—'} <span class="aud-arrow">→</span> <strong>${_escAudit(l.depois) || '—'}</strong>`;
+    rows += `<tr>
+      <td style="white-space:nowrap">${_fmtDataHora(l.data_hora)}</td>
+      <td><strong>${_escAudit(l.usuario)}</strong></td>
+      <td>${_escAudit(_humanizaAlteracao(l))}</td>
+      <td>${mudou}</td>
+    </tr>`;
+  }
+  body.innerHTML = `<table class="tbl"><thead><tr>
+    <th>Data/Hora</th><th>Usuário</th><th>O que mudou</th><th>De → Para</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
 // "← Voltar" leva pro drill-down da frente do próprio KPI (em vez de sempre
 // cair no dashboard geral) — mantém o contexto de onde o usuário estava.
 function voltarDoKPI() {
@@ -748,6 +970,7 @@ function showKPI(kpiId) {
   document.getElementById('view-users').classList.remove('on');
   document.getElementById('view-tarefas').classList.remove('on');
   document.getElementById('view-config').classList.remove('on');
+  document.getElementById('view-audit').classList.remove('on');
   document.getElementById('view-kpi').classList.add('on');
   highlightNav(kpiId);
   updateNavTopActive();
@@ -1847,6 +2070,7 @@ function showUsersAdmin() {
   document.getElementById('view-kpi').classList.remove('on');
   document.getElementById('view-tarefas').classList.remove('on');
   document.getElementById('view-config').classList.remove('on');
+  document.getElementById('view-audit').classList.remove('on');
   document.getElementById('view-users').classList.add('on');
   updateNavTopActive();
   setBreadcrumb([{ label: 'Início', action: 'showIndex()' }, { label: 'Configurações', action: 'showConfig()' }, { label: 'Gerenciar Acessos' }]);
@@ -2098,7 +2322,7 @@ function deleteUserConfirm() {
           DB.usuario = { email: session.user.email, nome: perfil.nome, perfil: perfilMapped, responsavel: perfil.responsavel_vinculado, diretoria: perfil.diretoria_vinculada, ativo: true };
           SESSION = DB.usuario;
           await loadData();
-          initApp();
+          initApp();   // F5: a sessão de acesso continua (marcador em localStorage); nada a registrar
         }
       }
     } catch (e) {

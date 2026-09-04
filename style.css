@@ -563,6 +563,22 @@ table.proj-tbl tbody tr:hover td{background:var(--surface-2)}
 .cfg-theme-btn:hover{border-color:var(--t3);color:var(--t1)}
 #cfg-admin-section .sec-hd{border-bottom:none}
 
+/* ── Auditoria ─────────────────────────────────────────────────────── */
+#view-audit{display:none;padding:20px;overflow-y:auto;flex:1}
+#view-audit.on{display:block}
+.aud-tabs{display:flex;gap:6px;padding:12px 14px 0}
+.aud-tab{background:transparent;border:none;border-bottom:2px solid transparent;padding:8px 12px;font-size:13px;font-weight:600;color:var(--t3);cursor:pointer}
+.aud-tab:hover{color:var(--t1)}
+.aud-tab.on{color:var(--t1);border-bottom-color:var(--accent-bg)}
+.aud-filtros{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 14px;border-bottom:1px solid var(--border-soft)}
+.aud-filtros select,.aud-filtros input{padding:6px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--t1);font-size:12px}
+.aud-flabel{font-size:11px;color:var(--t3);display:flex;align-items:center;gap:4px}
+.aud-search{min-width:140px}
+.aud-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.aud-badge.aberta{background:var(--warn-bg);color:#8a6100}
+.aud-badge.fechada{background:var(--ok-bg);color:#2f6b2f}
+.aud-arrow{color:var(--t4);font-weight:700}
+
 /* Badges de status e perfil */
 .usr-badge-on{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:#e8f5e9;color:#1a5c1a;letter-spacing:.03em}
 .usr-badge-off{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:#fce4e4;color:#b00020;letter-spacing:.03em}
