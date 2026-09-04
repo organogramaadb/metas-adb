@@ -28,8 +28,20 @@ function isLiveMode() { return !!(SUPA_URL && SUPA_KEY); }
 // o "Sair" clicado pelo usuário (que também dispara SIGNED_OUT) da queda
 // inesperada da sessão.
 let _intentionalLogout = false;
+// Token de acesso cacheado de forma SÍNCRONA (getSession é async e inútil no
+// momento do fechamento da aba). Alimentado aqui (INITIAL_SESSION/SIGNED_IN/
+// TOKEN_REFRESHED), no doLogin e no bootstrap por F5. É o que permite o INSERT
+// via fetch keepalive do "ping de saída" passar pela RLS (INSERT exige usuário
+// autenticado — anon não grava).
+let _acessoToken = null;
+let _pingUltimoTs = 0;
+let _interagiuDesdePing = false;
+let _sentinelaAtiva = false;
+const PING_THROTTLE_MS = 90000;    // ping não-forçado no máx. 1x/90s
+const HEARTBEAT_MS = 300000;       // heartbeat esparso: 5 min (só se visível e houve interação)
 if (isLiveMode()) {
-  _supa.auth.onAuthStateChange((event) => {
+  _supa.auth.onAuthStateChange((event, session) => {
+    _acessoToken = (session && session.access_token) || null;
     if (event !== 'SIGNED_OUT') return;
     if (_intentionalLogout) { _intentionalLogout = false; return; }
     if (SESSION) {
@@ -67,12 +79,13 @@ async function doLogin(event) {
   }
 
   // Live mode: Supabase Auth
-  const { error: authError } = await _supa.auth.signInWithPassword({ email, password: pwd });
+  const { data: authData, error: authError } = await _supa.auth.signInWithPassword({ email, password: pwd });
   if (authError) {
     errEl.textContent = 'E-mail ou senha incorretos.';
     errEl.style.display = 'block';
     return;
   }
+  _acessoToken = (authData && authData.session && authData.session.access_token) || _acessoToken;
 
   // Busca perfil na tabela usuarios
   const { data: perfil, error: perfilError } = await _supa
@@ -102,6 +115,7 @@ async function doLogin(event) {
 
   await loadData();
   registrarLoginAcesso();   // login explícito → sempre registra um acesso
+  iniciarSentinelaAcesso(); // passa a detectar o fechamento da aba (ping de saída)
   initApp();
 }
 
@@ -138,7 +152,7 @@ function _limpaSessaoAcesso() {
   try { localStorage.removeItem('metasSessaoAcesso'); } catch (e) {}
 }
 
-function logAcesso(acao, sessaoId, usuario) {
+function logAcesso(acao, sessaoId, usuario, campo) {
   const u = usuario || (SESSION && SESSION.email);
   if (!u) return;
   const entry = {
@@ -148,28 +162,113 @@ function logAcesso(acao, sessaoId, usuario) {
     acao,                                  // 'LOGIN' | 'LOGOUT'
     tabela: 'acesso',
     id_registro: sessaoId,
-    campo: '', antes: '', depois: '',
+    campo: campo || '', antes: '', depois: '',
     _synced: false,
   };
   DB.logs.unshift(entry);
   return apiAddLog(entry).then(() => { entry._synced = true; }).catch(() => {});
 }
 
-// Login explícito (doLogin): sempre abre um acesso visível; se sobrou uma
-// sessão anterior aberta (marcador presente), fecha-a antes para não acumular.
+// "Ping de vida" da sessão: grava um PING (last-seen) em logs_auditoria, NÃO um
+// LOGOUT — assim o F5 é inócuo (só mais um ping da mesma sessão) e o multi-aba
+// não derruba a sessão de uma aba-irmã. keepalive faz o POST sobreviver ao
+// fechamento da aba; usa o token do próprio usuário (RLS). Não toca DB.logs
+// (não polui o cache de 200). Atualiza o marcador com ultimoPing (para o
+// auto-fechamento no próximo login carimbar o fim na hora certa).
+function enviarPingAcesso(motivo, opts) {
+  opts = opts || {};
+  const s = _sessaoAtiva();
+  if (!s || !s.sessaoId || !_acessoToken || !isLiveMode()) return;
+  if (!opts.force && (Date.now() - _pingUltimoTs) < PING_THROTTLE_MS) return;
+  const agora = new Date().toISOString();
+  try {
+    fetch(SUPA_URL + '/rest/v1/logs_auditoria', {
+      method: 'POST',
+      keepalive: true,
+      headers: {
+        apikey: SUPA_KEY,
+        Authorization: 'Bearer ' + _acessoToken,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({
+        data_hora: agora, nome_usuario: s.email, acao: 'PING',
+        tabela_afetada: 'acesso', id_registro: s.sessaoId,
+        campo_alterado: motivo || '', valor_anterior: '', valor_novo: '',
+      }),
+    }).catch(() => {});
+  } catch (e) {}
+  _pingUltimoTs = Date.now();
+  _interagiuDesdePing = false;
+  _gravaSessaoAcesso({ ...s, ultimoPing: agora });
+}
+
+// Liga os detectores de "saiu da página": visibilitychange (aba oculta/fechando),
+// pagehide (descarte real — não bfcache) e pageshow (retorno do bfcache). Um
+// heartbeat esparso mantém o last-seen fresco em sessões longas, mas só dispara
+// se a aba está visível E houve interação (não gera volume ocioso).
+function iniciarSentinelaAcesso() {
+  if (_sentinelaAtiva) return;
+  _sentinelaAtiva = true;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') enviarPingAcesso('oculto');
+  });
+  window.addEventListener('pagehide', (e) => {
+    if (e.persisted) return;   // indo para bfcache: não é fechamento real
+    enviarPingAcesso('pagehide', { force: true });
+  });
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) enviarPingAcesso('resume', { force: true });   // voltou do bfcache
+  });
+  document.addEventListener('pointerdown', () => { _interagiuDesdePing = true; });
+  document.addEventListener('keydown',     () => { _interagiuDesdePing = true; });
+  setInterval(() => {
+    if (document.visibilityState === 'visible' && _interagiuDesdePing) enviarPingAcesso('heartbeat');
+  }, HEARTBEAT_MS);
+}
+
+// Fecha a sessão anterior no próximo login (rede de segurança para quem fechou
+// a aba, deu crash ou expirou). Carimba o LOGOUT no ÚLTIMO ping (hora real da
+// saída) quando há um; senão, no agora (impreciso, como antes). Marca
+// campo='auto_login_seguinte' para a view distinguir do "Sair".
+function _fecharSessaoAnterior(s) {
+  if (!s || !s.sessaoId) return;
+  if (s.ultimoPing) _gravarLogoutBackstamp(s.sessaoId, s.email, s.ultimoPing, 'auto_login_seguinte');
+  else logAcesso('LOGOUT', s.sessaoId, s.email, 'auto_login_seguinte');
+}
+
+// Grava um LOGOUT carimbado NO PASSADO (data_hora = hora do último ping). Precisa
+// de fetch direto porque apiAddLog reescreve data_hora com a hora do insert.
+function _gravarLogoutBackstamp(sessaoId, email, dataHoraISO, campo) {
+  // reflete no cache local com o carimbo certo (visão imediata e modo demo)
+  DB.logs.unshift({ id: 'log-' + Date.now() + '-LOGOUT', data_hora: dataHoraISO, usuario: email,
+    acao: 'LOGOUT', tabela: 'acesso', id_registro: sessaoId, campo: campo || '', antes: '', depois: '', _synced: true });
+  if (!isLiveMode() || !_acessoToken) return;
+  try {
+    fetch(SUPA_URL + '/rest/v1/logs_auditoria', {
+      method: 'POST', keepalive: false,
+      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + _acessoToken, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ data_hora: dataHoraISO, nome_usuario: email, acao: 'LOGOUT',
+        tabela_afetada: 'acesso', id_registro: sessaoId, campo_alterado: campo || '', valor_anterior: '', valor_novo: '' }),
+    }).catch(() => {});
+  } catch (e) {}
+}
+
+// Login explícito (doLogin): sempre abre um acesso visível; a sessão anterior
+// (se houver marcador) é fechada de forma determinística — carimbada no último
+// ping (rede de segurança para fechamentos/crash que não geraram "Sair").
 function registrarLoginAcesso() {
   if (!SESSION) return;
   const s = _sessaoAtiva();
-  if (s && s.sessaoId) logAcesso('LOGOUT', s.sessaoId, s.email);   // fecha a anterior
+  if (s && s.sessaoId) _fecharSessaoAnterior(s);
   const sessaoId = uid('sess');
   _gravaSessaoAcesso({ sessaoId, email: SESSION.email });
   logAcesso('LOGIN', sessaoId);
 }
 
-// Encerra a sessão (Sair ou expiração) — grava LOGOUT para fechar o par.
+// Encerra a sessão (Sair ou expiração) — grava LOGOUT explícito (fim exato).
 // Aguarda a gravação: no logout, o signOut() invalida o token logo em seguida,
-// então o INSERT do LOGOUT precisa partir antes disso (senão a sessão fica
-// "em aberto" à toa).
+// então o INSERT do LOGOUT precisa partir antes disso.
 async function encerrarSessaoAcesso() {
   const s = _sessaoAtiva();
   if (s && s.sessaoId) { try { await logAcesso('LOGOUT', s.sessaoId, s.email); } catch (e) {} }
@@ -216,7 +315,7 @@ async function loadData() {
         _supa.from('kpi_responsaveis').select('id, id_kpi, responsavel, diretor').eq('ativo', true),
         _supa.from('metas').select('*').eq('ativo', true).order('id_kpi').order('seq'),
         _supa.from('projetos').select('*').eq('ativo', true),
-        _supa.from('logs_auditoria').select('*').order('data_hora', { ascending: false }).limit(200),
+        _supa.from('logs_auditoria').select('*').neq('acao', 'PING').order('data_hora', { ascending: false }).limit(200),
       ]),
       fetchAllRows('metas_mensais', '*', ['id_meta', 'ano', 'mes']),
     ]);

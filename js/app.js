@@ -743,31 +743,50 @@ async function saveMyAccount() {
 let auditTab = 'acessos';
 let _auditAcessos = [];
 let _auditAlteracoes = [];
+let _auditPings = {};   // sessaoId → ms do último ping (last-seen)
+
+// Reduz uma lista de PINGs ao mais recente por sessão (só interessa o último).
+function _reduzPings(list) {
+  const m = {};
+  for (const l of list) {
+    const ms = _logMs(l.data_hora);
+    if (isNaN(ms)) continue;
+    if (m[l.id_registro] == null || ms > m[l.id_registro]) m[l.id_registro] = ms;
+  }
+  return m;
+}
 
 async function carregarAuditoria() {
-  let acessos = null, alteracoes = null;
+  let acessos = null, alteracoes = null, pings = null;
   if (isLiveMode()) {
     try {
-      const [a, b] = await Promise.all([
-        _supa.from('logs_auditoria').select('*').eq('tabela_afetada', 'acesso')
+      // Queries SEPARADAS: LOGIN/LOGOUT, alterações e PINGs — assim o volume de
+      // ping nunca empurra os LOGIN/edições para fora da janela de leitura.
+      const [a, b, c] = await Promise.all([
+        _supa.from('logs_auditoria').select('*').eq('tabela_afetada', 'acesso').in('acao', ['LOGIN', 'LOGOUT'])
              .order('data_hora', { ascending: false }).limit(1000),
         _supa.from('logs_auditoria').select('*').in('acao', ['UPDATE', 'INSERT', 'DELETE'])
              .order('data_hora', { ascending: false }).limit(1000),
+        _supa.from('logs_auditoria').select('*').eq('tabela_afetada', 'acesso').eq('acao', 'PING')
+             .order('data_hora', { ascending: false }).limit(1000),
       ]);
-      if (a.error || b.error) throw (a.error || b.error);
+      if (a.error || b.error || c.error) throw (a.error || b.error || c.error);
       acessos    = (a.data || []).map(_normLog);
       alteracoes = (b.data || []).map(_normLog);
+      pings      = _reduzPings((c.data || []).map(_normLog));
     } catch (e) {
       console.warn('Auditoria: busca dedicada falhou, usando cache local.', e);
     }
   }
   if (acessos === null) {   // demo, ou falha na busca → cai no cache local (DB.logs)
     const all = (DB.logs || []).map(_normLog);
-    acessos    = all.filter(l => l.tabela === 'acesso');
+    acessos    = all.filter(l => l.tabela === 'acesso' && (l.acao === 'LOGIN' || l.acao === 'LOGOUT'));
     alteracoes = all.filter(l => (l.acao === 'UPDATE' || l.acao === 'INSERT' || l.acao === 'DELETE') && l.tabela !== 'acesso');
+    pings      = _reduzPings(all.filter(l => l.tabela === 'acesso' && l.acao === 'PING'));
   }
   _auditAcessos = acessos;
   _auditAlteracoes = alteracoes;
+  _auditPings = pings;
 }
 
 async function showAuditoria() {
@@ -852,20 +871,54 @@ function _tipoAlteracao(l) {
   return 'outro';
 }
 // Pareia LOGIN/LOGOUT da mesma sessão (id_registro) numa linha com duração.
-function _buildSessoes(logs) {
+const AUDIT_LIMITE_ATIVO_MS = 15 * 60 * 1000;   // sem sinal há mais que isso → "fechou a aba"
+
+// Monta as sessões de acesso a partir de LOGIN/LOGOUT + o último ping por sessão.
+// Situação/fim são inferidos:
+//  - LOGOUT explícito ("Sair"/expiração) → Encerrada, fim exato.
+//  - LOGOUT de auto-fechamento (campo 'auto_login_seguinte') → Encerrada (terminal).
+//  - só pings, o último recente → Em aberto (ativa agora).
+//  - só pings, o último antigo → Encerrada (fechou a aba), fim = último ping.
+//  - nenhum sinal → Em aberto.
+// A recência compara o último ping com o relógio do próprio navegador (refNow),
+// com clamp de carimbos no futuro (protege contra relógio de cliente adiantado —
+// sem isso uma sessão de relógio à frente ficaria "imortal").
+function _buildSessoes(logs, pingMap) {
+  pingMap = pingMap || {};
   const porSessao = {};
+  const refNow = Date.now();
   for (const l of logs) {
     if (l.tabela !== 'acesso') continue;
     if (l.acao !== 'LOGIN' && l.acao !== 'LOGOUT') continue;
     const k = l.id_registro || (l.usuario + '|' + l.data_hora);
     const s = (porSessao[k] = porSessao[k] || {});
     s.usuario = l.usuario;
-    if (l.acao === 'LOGIN') s.inicio = _logMs(l.data_hora);
-    else                    s.fim    = _logMs(l.data_hora);
+    const ms = _logMs(l.data_hora);
+    if (l.acao === 'LOGIN') {
+      s.inicio = (s.inicio == null) ? ms : Math.min(s.inicio, ms);
+    } else if (l.campo === 'auto_login_seguinte') {
+      s.autoClose = ms;
+    } else {
+      s.logout = ms;
+    }
   }
-  // Exige um LOGIN (início): um LOGOUT solto (ex.: fechamento de uma sessão cujo
-  // LOGIN já foi apagado, ou fora da janela de 200) não vira uma linha fantasma.
+  for (const k in porSessao) {
+    const lp = pingMap[k];
+    if (lp != null) porSessao[k].lastPing = lp;
+  }
+
+  // Exige um LOGIN (início): um LOGOUT/ping solto (sessão cujo LOGIN saiu da
+  // janela ou foi apagado) não vira linha fantasma.
   const arr = Object.values(porSessao).filter(s => s.inicio != null);
+  for (const s of arr) {
+    if (s.logout != null)         { s.sit = 'encerrada';  s.fim = s.logout; }
+    else if (s.autoClose != null) { s.sit = 'encerrada';  s.fim = s.autoClose; }
+    else if (s.lastPing != null) {
+      const lp = Math.min(s.lastPing, refNow);   // clamp de futuro (relógio adiantado)
+      if (refNow - lp <= AUDIT_LIMITE_ATIVO_MS) { s.sit = 'ativa';      s.fim = null; }
+      else                                      { s.sit = 'fechou_aba'; s.fim = lp; }
+    } else { s.sit = 'aberta'; s.fim = null; }
+  }
   arr.sort((a, b) => b.inicio - a.inicio);
   return arr;
 }
@@ -894,20 +947,21 @@ function renderAuditoria() {
   const body = document.getElementById('aud-body');
 
   if (auditTab === 'acessos') {
-    const sess = _buildSessoes(_auditAcessos).filter(s => passaUser(s.usuario) && passaData(s.inicio != null ? s.inicio : s.fim));
+    const sess = _buildSessoes(_auditAcessos, _auditPings).filter(s => passaUser(s.usuario) && passaData(s.inicio));
     if (!sess.length) {
       body.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🕑</div><div class="empty-state-t">Nenhum acesso registrado no período</div></div>';
       return;
     }
     let rows = '';
     for (const s of sess) {
-      const dur = (s.inicio != null && s.fim != null) ? _fmtDuracao(s.fim - s.inicio) : '—';
-      const situacao = s.fim != null
-        ? '<span class="aud-badge fechada">Encerrada</span>'
-        : '<span class="aud-badge aberta">Em aberto</span>';
+      const dur = (s.fim != null) ? _fmtDuracao(s.fim - s.inicio) : '—';
+      const situacao =
+        s.sit === 'encerrada'  ? '<span class="aud-badge fechada">Encerrada</span>' :
+        s.sit === 'fechou_aba' ? '<span class="aud-badge fechada">Encerrada (fechou a aba)</span>' :
+                                 '<span class="aud-badge aberta">Em aberto</span>';
       rows += `<tr>
         <td><strong>${_escAudit(s.usuario)}</strong></td>
-        <td style="white-space:nowrap">${s.inicio != null ? _fmtDataHora(new Date(s.inicio).toISOString()) : '—'}</td>
+        <td style="white-space:nowrap">${_fmtDataHora(new Date(s.inicio).toISOString())}</td>
         <td style="white-space:nowrap">${s.fim != null ? _fmtDataHora(new Date(s.fim).toISOString()) : '—'}</td>
         <td class="tbl-c" style="white-space:nowrap">${dur}</td>
         <td class="tbl-c">${situacao}</td>
@@ -2312,6 +2366,7 @@ function deleteUserConfirm() {
     try {
       const { data: { session } } = await _supa.auth.getSession();
       if (session) {
+        _acessoToken = session.access_token;   // token síncrono para o ping de saída após F5
         const { data: perfil } = await _supa
           .from('usuarios')
           .select('nome, perfil_acesso, responsavel_vinculado, diretoria_vinculada, ativo')
@@ -2322,7 +2377,9 @@ function deleteUserConfirm() {
           DB.usuario = { email: session.user.email, nome: perfil.nome, perfil: perfilMapped, responsavel: perfil.responsavel_vinculado, diretoria: perfil.diretoria_vinculada, ativo: true };
           SESSION = DB.usuario;
           await loadData();
-          initApp();   // F5: a sessão de acesso continua (marcador em localStorage); nada a registrar
+          initApp();                 // F5: a sessão de acesso continua (marcador em localStorage); NÃO grava LOGIN novo
+          iniciarSentinelaAcesso();  // religa a detecção de fechamento
+          enviarPingAcesso('resume', { force: true });   // mantém o last-seen fresco após o refresh
         }
       }
     } catch (e) {
