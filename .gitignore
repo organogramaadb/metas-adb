@@ -9,3 +9,106 @@ Thumbs.db
 
 # Logs
 *.log
+
+# === Padrao da casa - Controladoria ADB (aplicado em 2026-09-11) ===
+# Dependencias e gerenciadores de pacote
+node_modules/
+.pnp/
+.pnp.js
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.pyd
+# Build e saida de framework
+dist/
+dev-dist/
+build/
+out/
+.next/
+.open-next/
+coverage/
+tsconfig.tsbuildinfo
+# Cache de ferramentas e config local de editor/agente
+.wrangler/
+.turbo/
+.vscode/
+.idea/
+.claude/worktrees/
+# Segredos e credenciais (NUNCA versionar)
+.env
+.env.*
+*.env
+.dev.vars
+.dev.vars.*
+*secret*
+*credenc*
+*password*
+credentials*.json
+client_secret*.json
+service-account*.json
+*.pem
+*.key
+*.pfx
+*.p12
+*.ppk
+id_rsa
+id_rsa.*
+.npmrc
+.pgpass
+!.env.example
+!.env.exemplo
+!**/.env.example
+# Dados pessoais e exports de autenticacao
+_export_migracao_controladoria/
+**/auth_users.json
+**/auth_identities.json
+exportUsers_*.csv
+*_PROD.tsv
+*_PROD.csv
+faturamento_*.json
+# SharePoint / Office / Windows
+desktop.ini
+~$*
+# Midia audiovisual e arte pesada (acervo, nunca versionar)
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.wmv
+*.mp3
+*.wav
+*.psd
+*.ai
+*.eps
+*.tif
+*.tiff
+# Power BI (binario grande e cache de modelo)
+*.pbix
+*.abf
+**/.pbi/
+# Planilhas, documentos e compactados
+*.xlsx
+*.xls
+*.xlsm
+*.xlsb
+*.docx
+*.pptx
+*.pdf
+*.zip
+*.rar
+*.7z
+# Backups, dumps e logs
+_backups/
+BACKUP/
+LOGS/
+TESTES/
+*.bak
+*.bak-*
+*.backup-pre-*
+npm-debug.log
+*.mdf
+*.ldf
+*.bacpac
+*.dmp
