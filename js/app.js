@@ -269,8 +269,8 @@ function showIndex(area) {
     document.getElementById('welcome-sub').textContent = `Aqui está o panorama geral do pilar ${areaLabel(dashboardDrillArea)}.`;
   } else {
     document.getElementById('welcome-sub').textContent = canSeeAll()
-      ? 'Aqui está o panorama geral do monitoramento de indicadores.'
-      : 'Seus indicadores e metas de responsabilidade.';
+      ? 'Aqui está o panorama geral do monitoramento das frentes.'
+      : 'Suas frentes e KPIs de responsabilidade.';
   }
   document.getElementById('dash-updated').textContent = 'Atualizado em ' +
     new Date().toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
@@ -310,15 +310,15 @@ function renderDashboard() {
     pendWrap.style.display = 'none';
     cardsWrap.style.display = '';
     renderKpiCardsGrid(areas[dashboardDrillArea].map(s => s.kpi));
-    titleEl.textContent = areaIcon(dashboardDrillArea) + ' ' + areaLabel(dashboardDrillArea);
-    subEl.textContent = 'Desempenho de cada indicador desta frente — veja o detalhe na lista ou nos cards abaixo';
+    titleEl.textContent = 'Panorama por Frente';
+    subEl.textContent = `Frentes do pilar ${areaLabel(dashboardDrillArea)} — clique numa frente pra abrir seus KPIs`;
     btnsEl.innerHTML = `<button class="sec-btn" onclick="showIndex()">← Voltar ao panorama geral</button>`;
   } else {
     pendWrap.style.display = '';
     cardsWrap.style.display = 'none';
     renderDashPendencias(kpis);
-    titleEl.textContent = 'Panorama por Frente';
-    subEl.textContent = 'Desempenho médio por frente de monitoramento — clique numa frente pra aprofundar';
+    titleEl.textContent = 'Panorama por Pilar';
+    subEl.textContent = 'Desempenho médio por pilar — clique num pilar pra aprofundar';
     btnsEl.innerHTML = '';
   }
 }
@@ -334,7 +334,7 @@ function renderDashStatCards(stats, scopeArea) {
   const semDados = stats.filter(s => s.cls === null).length;
   const pct = n => total ? Math.round((n / total) * 100) : 0;
 
-  const totalLabel = scopeArea ? 'Indicadores desta frente' : 'Indicadores monitorados';
+  const totalLabel = scopeArea ? 'Frentes deste pilar' : 'Frentes monitoradas';
   // Cada card leva pra a lista filtrada em Origem — "3 Crítico" não é só uma
   // contagem, é a pergunta "quem está crítico agora?" já respondida num clique.
   const cards = [
@@ -585,7 +585,7 @@ function showOrigem(statusFilter) {
 
   const u = SESSION;
   document.getElementById('origem-msg').textContent = canSeeAll() ? 'Painel de Metas Corporativas' : `Olá, ${u.nome.split(' ')[0]}`;
-  document.getElementById('origem-sub').textContent = canSeeAll() ? 'Visão consolidada de todos os KPIs.' : 'Seus KPIs e metas de responsabilidade.';
+  document.getElementById('origem-sub').textContent = canSeeAll() ? 'Visão consolidada de todas as frentes.' : 'Suas frentes e KPIs de responsabilidade.';
 
   const kpis = allowedKPIs();
 
@@ -858,7 +858,7 @@ function _humanizaAlteracao(l) {
   const t = l.tabela, c = l.campo;
   if (t === 'metas_mensais' && c === 'valor_realizado') return 'Realizado (mensal)';
   if (t === 'metas_mensais' && c === 'valor_meta')      return 'Meta (mensal)';
-  if (t === 'metas')    return 'Meta · ' + (c || '');
+  if (t === 'metas')    return 'KPI · ' + (c || '');
   if (t === 'projetos') return 'Projeto · ' + (c || '');
   if (t === 'kpis')     return 'KPI · ' + (c || '');
   return (t || '') + (c ? ' · ' + c : '');
@@ -1069,7 +1069,7 @@ function renderCards(totalPontuacao, resultados, ultimoMes) {
   const periodo = ultimoMes > 0 ? `Acum. até ${MESES_ABREV[ultimoMes-1]}/2026` : 'Sem realizado apurado';
 
   let html = `<div class="card-total">
-    <div class="ct-label">Pontuação Total do KPI</div>
+    <div class="ct-label">Pontuação Total da Frente</div>
     <div class="ct-pct">${pctDisplay}</div>
     <div class="ct-sub">${periodo}</div>
     <div class="ct-bar"><div class="ct-bar-fill" style="width:${barW}%"></div></div>
@@ -1082,7 +1082,7 @@ function renderCards(totalPontuacao, resultados, ultimoMes) {
     const barW2 = r.scoringAt !== null ? Math.min(100, r.scoringAt * 100).toFixed(1) : 0;
     const pts = (r.pontuacao * 100).toFixed(1) + '%';
     html += `<div class="card-meta" onclick="openDrawer('${r.meta.id}')">
-      <div class="cm-num">Meta ${r.meta.seq}</div>
+      <div class="cm-num">KPI ${r.meta.seq}</div>
       <div class="cm-name">${r.meta.nome}</div>
       <div class="cm-pct ${cls2}">${atDisplay}</div>
       <div class="cm-bar"><div class="cm-bar-fill ${cls2}" style="width:${barW2}%"></div></div>
@@ -1106,7 +1106,7 @@ function renderMetasTable(resultados, kpi) {
 
   // Botões de seção
   document.getElementById('sec-btns-metas').innerHTML = canEdit
-    ? `<button class="sec-btn" onclick="openDrawer(null,'${kpi.id}')">+ Nova Meta</button>`
+    ? `<button class="sec-btn" onclick="openDrawer(null,'${kpi.id}')">+ Novo KPI</button>`
     : '';
 
   if (!resultados.length) {
@@ -1175,7 +1175,7 @@ function renderMetasTable(resultados, kpi) {
   const totalPeso = resultados.reduce((s, r) => s + (parseFloat(r.meta.peso) || 0), 0);
   const pesoOk = Math.abs(totalPeso - 1) < 0.001;
   rows += `<tr class="tbl-total-row">
-    <td colspan="3" class="tbl-total-label">Total de Peso das Metas</td>
+    <td colspan="3" class="tbl-total-label">Total de Peso dos KPIs</td>
     <td class="tbl-peso tbl-peso-total ${pesoOk ? 'ok' : 'err'}">${(totalPeso * 100).toFixed(0)}%</td>
     <td colspan="6"></td>
   </tr>`;
@@ -1211,7 +1211,7 @@ function renderProjTable(kpiId, kpi) {
         <div class="proj-name">${p.nome}</div>
         <div class="proj-meta-link">${p.responsavel}</div>
       </td>
-      <td style="font-size:11px;color:#888">${metaVinc ? `Meta ${metaVinc.seq} · ${metaVinc.nome}` : '—'}</td>
+      <td style="font-size:11px;color:#888">${metaVinc ? `KPI ${metaVinc.seq} · ${metaVinc.nome}` : '—'}</td>
       <td class="tbl-c"><span class="status-badge ${stCls}">${p.status}</span></td>
       <td class="tbl-c"><span class="prio-badge ${prCls}">${p.prioridade}</span></td>
       <td class="tbl-c" style="font-size:11px;white-space:nowrap">${fmtPrazo(p.prazo)}</td>
@@ -1271,10 +1271,10 @@ function openDrawer(metaId, kpiId) {
   }
 
   drawerMetaId = meta.id;
-  document.getElementById('drw-title').textContent = meta._isNew ? 'Nova Meta' : 'Editar Meta';
+  document.getElementById('drw-title').textContent = meta._isNew ? 'Novo KPI' : 'Editar KPI';
   document.getElementById('drw-sub').textContent = meta._isNew
-    ? `${meta.codigo_kpi} · Meta ${meta.seq} (nova)`
-    : `${meta.codigo_kpi} · Meta ${meta.seq}`;
+    ? `${meta.codigo_kpi} · KPI ${meta.seq} (novo)`
+    : `${meta.codigo_kpi} · KPI ${meta.seq}`;
   document.getElementById('drw-nome').value    = meta.nome;
   document.getElementById('drw-resp').value    = meta.responsavel;
   document.getElementById('drw-desc').value    = meta.descricao || '';
@@ -1412,7 +1412,7 @@ function applyDrawerReadOnly(readOnly) {
   if (saveBtn) saveBtn.style.display = readOnly ? 'none' : '';
   const banner = document.getElementById('drw-ro-banner');
   if (banner) banner.style.display = readOnly ? 'block' : 'none';
-  if (readOnly) document.getElementById('drw-title').textContent = 'Visualizar Meta';
+  if (readOnly) document.getElementById('drw-title').textContent = 'Visualizar KPI';
 }
 
 function buildMonthGrids(meta) {
@@ -1620,10 +1620,10 @@ function updatePesoTotalHint() {
   const pct = (totalComEsta * 100).toFixed(0);
 
   if (totalComEsta > 1.001) {
-    hintEl.innerHTML = `⚠ Total do KPI ficaria em <b>${pct}%</b> — ao salvar, as outras metas serão reduzidas proporcionalmente para fechar em 100%.`;
+    hintEl.innerHTML = `⚠ Total da Frente ficaria em <b>${pct}%</b> — ao salvar, os outros KPIs serão reduzidos proporcionalmente para fechar em 100%.`;
     hintEl.style.color = 'var(--warn)';
   } else {
-    hintEl.textContent = `Total do KPI com este peso: ${pct}%`;
+    hintEl.textContent = `Total da Frente com este peso: ${pct}%`;
     hintEl.style.color = '#999';
   }
 }
@@ -1683,14 +1683,14 @@ function saveDrawer() {
   const meta = DB.metas.find(m => m.id === drawerMetaId);
   if (!meta) return;
 
-  if (!canEditMeta(meta)) { toast('Sem permissão para editar esta meta.', 'err'); return; }
+  if (!canEditMeta(meta)) { toast('Sem permissão para editar este KPI.', 'err'); return; }
 
   const isNew = !!meta._isNew;
   const before = JSON.parse(JSON.stringify(meta));
 
   // Validação obrigatória para nova meta
   const novoNome = document.getElementById('drw-nome').value.trim();
-  if (isNew && !novoNome) { toast('Preencha o nome da meta antes de salvar.', 'warn'); return; }
+  if (isNew && !novoNome) { toast('Preencha o nome do KPI antes de salvar.', 'warn'); return; }
 
   // Salva parâmetros (todos os campos editáveis)
   meta.nome         = novoNome || meta.nome;
@@ -1799,7 +1799,7 @@ function saveDrawer() {
   const msgRebal = metasRebalanceadas.length
     ? ` Peso de ${metasRebalanceadas.length} outra${metasRebalanceadas.length>1?'s':''} meta${metasRebalanceadas.length>1?'s':''} ajustado p/ manter o total em 100%.`
     : '';
-  toast((isNew ? '✅ Nova meta criada com sucesso!' : '✅ Meta salva com sucesso!') + msgRebal, 'ok');
+  toast((isNew ? '✅ Novo KPI criado com sucesso!' : '✅ KPI salvo com sucesso!') + msgRebal, 'ok');
 
   // Persiste no servidor. isNew foi capturado ANTES do delete _isNew acima,
   // por isso é passado explicitamente (senão a API faria UPDATE de meta inexistente).
@@ -1812,7 +1812,7 @@ function saveDrawer() {
         const mensaisDaMeta = DB.metasMensais.filter(r => r.id_meta === metaId && r.ano === ANO_ATUAL);
         return Promise.all(mensaisDaMeta.map(reg => apiSaveMetaMensal(reg).catch(() => {})));
       })
-      .catch(err => toast('Erro ao salvar meta: ' + err.message, 'err'));
+      .catch(err => toast('Erro ao salvar KPI: ' + err.message, 'err'));
     // Metas irmãs rebalanceadas por causa da trava de 100% de peso
     metasRebalanceadas.forEach(m => apiSaveMeta(m, false).catch(() => {}));
     // Logs
@@ -1830,7 +1830,7 @@ function saveDrawer() {
 function deleteMeta(metaId) {
   const meta = DB.metas.find(m => m.id === metaId);
   if (!meta) return;
-  if (!canEditMeta(meta)) { toast('Sem permissão para excluir esta meta.', 'err'); return; }
+  if (!canEditMeta(meta)) { toast('Sem permissão para excluir este KPI.', 'err'); return; }
 
   // Avisa se há projetos vinculados
   const projsVinc = DB.projetos.filter(p => p.id_meta === metaId && p.ativo);
@@ -1854,7 +1854,7 @@ function deleteMeta(metaId) {
   }
 
   const msgRenum = renumeradas.length ? ' Numeração das demais metas ajustada.' : '';
-  toast('🗑️ Meta excluída.' + msgRenum, '');
+  toast('🗑️ KPI excluído.' + msgRenum, '');
   if (currentKpiId) showKPI(currentKpiId);
 }
 
@@ -1915,8 +1915,8 @@ function saveKpiEdit() {
   const dir  = document.getElementById('kpi-edit-dir').value.trim();
   const area = document.getElementById('kpi-edit-area').value.trim();
 
-  if (!codigo) { toast('Código do KPI é obrigatório.', 'warn'); return; }
-  if (!nome) { toast('Nome do KPI é obrigatório.', 'warn'); return; }
+  if (!codigo) { toast('Código da Frente é obrigatório.', 'warn'); return; }
+  if (!nome) { toast('Nome da Frente é obrigatório.', 'warn'); return; }
 
   // Atualiza em memória
   kpi.codigo       = codigo;
@@ -1950,7 +1950,7 @@ function openProjModal(projId, kpiId) {
   // Popula select de metas
   const metas = DB.metas.filter(m => m.id_kpi === (kpiId || currentKpiId) && m.ativo);
   let metaOpts = '<option value="">— Selecione a meta vinculada —</option>';
-  for (const m of metas) metaOpts += `<option value="${m.id}">Meta ${m.seq} · ${m.nome}</option>`;
+  for (const m of metas) metaOpts += `<option value="${m.id}">KPI ${m.seq} · ${m.nome}</option>`;
   document.getElementById('proj-meta-sel').innerHTML = metaOpts;
 
   if (projId) {
@@ -1999,7 +1999,7 @@ function saveProject() {
   const nome = document.getElementById('proj-nome').value.trim();
   const metaId = document.getElementById('proj-meta-sel').value;
   if (!nome) { toast('Informe o nome do projeto.', 'err'); return; }
-  if (!metaId) { toast('Selecione a meta vinculada.', 'err'); return; }
+  if (!metaId) { toast('Selecione o KPI vinculado.', 'err'); return; }
 
   const now = new Date().toLocaleDateString('pt-BR');
   const kpiId = currentKpiId;
@@ -2385,5 +2385,9 @@ function deleteUserConfirm() {
     } catch (e) {
       console.warn('Falha ao restaurar sessão:', e);
     }
+  } else if (/[?&]demo=1(&|$)/.test(location.search)) {
+    // Revisão local (?demo=1): entra direto como Admin sobre os fixtures do data.js.
+    const u = login('admin@amigosdobem.org.br', 'admin');
+    if (u) { DB.usuario = u; DB.kpis = JSON.parse(JSON.stringify(KPIS)); initApp(); }
   }
 })();

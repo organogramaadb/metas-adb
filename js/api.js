@@ -19,7 +19,13 @@ const _supa = (SUPA_URL && SUPA_KEY)
   ? window.supabase.createClient(SUPA_URL, SUPA_KEY)
   : null;
 
-function isLiveMode() { return !!(SUPA_URL && SUPA_KEY); }
+function isLiveMode() {
+  // Atalho de revisão local: ?demo=1 força o modo demo (fixtures do data.js),
+  // mas SÓ em localhost — no GitHub Pages é ignorado (segue live/Supabase).
+  const _local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  if (_local && /[?&]demo=1(&|$)/.test(location.search)) return false;
+  return !!(SUPA_URL && SUPA_KEY);
+}
 
 // ── Aviso de sessão expirada ────────────────────────────────────────
 // Sem isso, quando o token do Supabase expira/é revogado, as próximas ações

@@ -6,7 +6,7 @@
 <title>Gestão de Desempenho | Amigos do Bem</title>
 <link rel="icon" type="image/png" href="assets/logo_adb.png">
 <link rel="apple-touch-icon" href="assets/logo_adb.png">
-<link rel="stylesheet" href="style.css?v=20260828k">
+<link rel="stylesheet" href="style.css?v=20260917f">
 <script>
 // Aplica o tema salvo antes da primeira renderização, evitando flash de tela clara.
 (function(){
@@ -135,8 +135,8 @@
         <div class="section dash-panorama">
           <div class="sec-hd">
             <div>
-              <div class="sec-title" id="dash-panorama-title">Panorama por Frente</div>
-              <div class="sec-sub" id="dash-panorama-sub">Desempenho médio por frente de monitoramento</div>
+              <div class="sec-title" id="dash-panorama-title">Panorama por Pilar</div>
+              <div class="sec-sub" id="dash-panorama-sub">Desempenho médio por pilar de monitoramento</div>
             </div>
             <div class="sec-btns" id="dash-panorama-btns"></div>
           </div>
@@ -241,8 +241,8 @@
             </div>
           </div>
           <div class="khd-btns">
-            <button class="btn-edit-kpi" id="btn-edit-kpi" onclick="openKpiEdit()" style="display:none">✏️ Editar KPI</button>
-            <button class="btn-print-kpi" id="btn-print-kpi" onclick="imprimirKPI()" title="Gerar PDF com as metas e projetos deste KPI">🖨️ Imprimir Meta</button>
+            <button class="btn-edit-kpi" id="btn-edit-kpi" onclick="openKpiEdit()" style="display:none">✏️ Editar Frente</button>
+            <button class="btn-print-kpi" id="btn-print-kpi" onclick="imprimirKPI()" title="Gerar PDF com os KPIs e projetos desta frente">🖨️ Imprimir Frente</button>
             <button class="btn-back" onclick="voltarDoKPI()">← Voltar</button>
           </div>
         </div>
@@ -256,7 +256,7 @@
         <div class="section">
           <div class="sec-hd">
             <div>
-              <div class="sec-title">Metas do KPI</div>
+              <div class="sec-title">KPIs da Frente</div>
               <div class="sec-sub" id="metas-periodo-sub">Acumulado até o último mês realizado</div>
             </div>
             <div class="sec-btns" id="sec-btns-metas">
@@ -268,7 +268,7 @@
               <thead>
                 <tr>
                   <th style="width:30px">#</th>
-                  <th>Meta</th>
+                  <th>KPI</th>
                   <th class="tbl-c">Direção</th>
                   <th class="tbl-c">Peso</th>
                   <th class="tbl-r">Meta Acum.</th>
@@ -302,7 +302,7 @@
               <thead>
                 <tr>
                   <th>Projeto / Iniciativa</th>
-                  <th>Meta Vinculada</th>
+                  <th>KPI Vinculado</th>
                   <th class="tbl-c">Status</th>
                   <th class="tbl-c">Prioridade</th>
                   <th class="tbl-c">Prazo</th>
@@ -444,7 +444,7 @@
               <select id="aud-tipo" onchange="renderAuditoria()">
                 <option value="">Todos os tipos</option>
                 <option value="realizado">Realizado</option>
-                <option value="meta">Metas</option>
+                <option value="meta">KPIs</option>
                 <option value="projeto">Projetos</option>
                 <option value="kpi">KPIs</option>
               </select>
@@ -468,27 +468,27 @@
 <div id="drawer">
   <div class="drw-hd">
     <div>
-      <div class="drw-hd-t" id="drw-title">Editar Meta</div>
+      <div class="drw-hd-t" id="drw-title">Editar KPI</div>
       <div class="drw-hd-s" id="drw-sub">—</div>
     </div>
     <button class="drw-close" onclick="closeDrawerWithConfirm()">×</button>
   </div>
   <div class="drw-tabs">
-    <button class="drw-tab on" onclick="switchDrawerTab('dados',this)">Dados da Meta</button>
+    <button class="drw-tab on" onclick="switchDrawerTab('dados',this)">Dados do KPI</button>
     <button class="drw-tab" onclick="switchDrawerTab('realizado',this)">Realizado Mensal</button>
     <button class="drw-tab" onclick="switchDrawerTab('obs',this)">Observações</button>
   </div>
   <div class="drw-body">
 
     <!-- Banner somente-leitura (gestores/diretoria) -->
-    <div class="drw-ro-banner" id="drw-ro-banner">🔒 Modo somente leitura — apenas o Administrador pode alterar os dados do KPI. Para solicitar revisão de números ou inclusão de meta, use a seção <b>Projetos e Iniciativas</b>.</div>
+    <div class="drw-ro-banner" id="drw-ro-banner">🔒 Modo somente leitura — apenas o Administrador pode alterar os dados do KPI. Para solicitar revisão de números ou inclusão de KPI, use a seção <b>Projetos e Iniciativas</b>.</div>
 
     <!-- Tab: Dados da Meta -->
     <div id="drw-tab-dados">
       <div class="fg">
         <div class="fgt">Identificação</div>
         <div class="fr s1">
-          <div class="fi"><label>Nome da Meta</label>
+          <div class="fi"><label>Nome do KPI</label>
             <input type="text" id="drw-nome" class="dirty">
           </div>
         </div>
@@ -537,7 +537,7 @@
           </div>
         </div>
         <div class="fr">
-          <div class="fi"><label>Peso da Meta</label>
+          <div class="fi"><label>Peso do KPI</label>
             <input type="number" id="drw-peso" step="0.1" min="0" max="1" class="dirty" oninput="updatePesoTotalHint()">
             <div id="drw-peso-hint" style="font-size:11px;margin-top:4px"></div>
           </div>
@@ -609,7 +609,7 @@
 
   </div><!-- /drw-body -->
   <div class="drw-act">
-    <button class="btn-delete" id="btn-meta-delete" onclick="deleteMetaFromDrawer()" style="display:none">🗑️ Excluir Meta</button>
+    <button class="btn-delete" id="btn-meta-delete" onclick="deleteMetaFromDrawer()" style="display:none">🗑️ Excluir KPI</button>
     <button class="btn-cancel" onclick="closeDrawerWithConfirm()">Cancelar</button>
     <button class="btn-save" id="btn-drawer-save" onclick="saveDrawer()">💾 Salvar Alterações</button>
   </div>
@@ -639,7 +639,7 @@
           </div>
         </div>
         <div class="fr">
-          <div class="fi"><label>Meta Vinculada *</label>
+          <div class="fi"><label>KPI Vinculado *</label>
             <select id="proj-meta-sel">
               <option value="">— Selecione —</option>
             </select>
@@ -708,7 +708,7 @@
 <div class="overlay" id="kpi-edit-modal">
   <div class="modal" style="max-width:480px">
     <div class="mhd">
-      <div class="mhd-t">Editar Cabeçalho do KPI</div>
+      <div class="mhd-t">Editar Cabeçalho da Frente</div>
       <button class="mhd-x" onclick="closeKpiEditWithConfirm()">×</button>
     </div>
     <div class="mbd">
@@ -717,8 +717,8 @@
           <div class="fi"><label>Código</label>
             <input type="text" id="kpi-edit-codigo" placeholder="Ex.: 1.01">
           </div>
-          <div class="fi"><label>Nome do KPI</label>
-            <input type="text" id="kpi-edit-nome" placeholder="Ex.: KPI Administração Central">
+          <div class="fi"><label>Nome da Frente</label>
+            <input type="text" id="kpi-edit-nome" placeholder="Ex.: Administração Central">
           </div>
         </div>
         <div class="fr">
@@ -805,10 +805,10 @@
 ════════════════════════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- ?v= força o navegador a buscar a versão nova após cada publicação (cache-busting). Incrementar a cada deploy. -->
-<script src="js/data.js?v=20260828k"></script>
-<script src="js/engine.js?v=20260828k"></script>
-<script src="js/api.js?v=20260828k"></script>
-<script src="js/app.js?v=20260828k"></script>
+<script src="js/data.js?v=20260917f"></script>
+<script src="js/engine.js?v=20260917f"></script>
+<script src="js/api.js?v=20260917f"></script>
+<script src="js/app.js?v=20260917f"></script>
 
 </body>
 </html>
