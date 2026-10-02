@@ -181,7 +181,7 @@ function updateThemeToggleBtn() {
   const desc = document.getElementById('cfg-theme-desc');
   if (!btn) return;
   const dark = document.body.classList.contains('theme-dark');
-  btn.textContent = dark ? '☀️ Ativar modo claro' : '🌙 Ativar modo escuro';
+  btn.innerHTML = dark ? '<i class="fa-solid fa-sun" aria-hidden="true"></i> Ativar modo claro' : '<i class="fa-solid fa-moon" aria-hidden="true"></i> Ativar modo escuro';
   if (desc) desc.textContent = dark ? 'Modo escuro' : 'Modo claro';
 }
 updateThemeToggleBtn();
@@ -264,7 +264,7 @@ function showIndex(area) {
   }
 
   const u = SESSION;
-  document.getElementById('welcome-msg').textContent = `Olá, ${u.nome.split(' ')[0]}! 👋`;
+  document.getElementById('welcome-msg').textContent = `Olá, ${u.nome.split(' ')[0]}!`;
   if (dashboardDrillArea) {
     document.getElementById('welcome-sub').textContent = `Aqui está o panorama geral do pilar ${areaLabel(dashboardDrillArea)}.`;
   } else {
@@ -338,10 +338,10 @@ function renderDashStatCards(stats, scopeArea) {
   // Cada card leva pra a lista filtrada em Origem — "3 Crítico" não é só uma
   // contagem, é a pergunta "quem está crítico agora?" já respondida num clique.
   const cards = [
-    { icon:'🎯', n:total, label:totalLabel, sub: semDados ? `${semDados} sem dado lançado` : 'Ver todos', cls:'', filter:null },
-    { icon:'✅', n:nOk,   label:'No alvo',  sub:`${pct(nOk)}% do total`,   cls:'ok',   filter:'ok' },
-    { icon:'⚠️', n:nWarn, label:'Atenção',  sub:`${pct(nWarn)}% do total`, cls:'warn', filter:'warn' },
-    { icon:'❌', n:nErr,  label:'Crítico',  sub:`${pct(nErr)}% do total`,  cls:'err',  filter:'err' },
+    { icon:'<i class="fa-solid fa-bullseye" aria-hidden="true"></i>', n:total, label:totalLabel, sub: semDados ? `${semDados} sem dado lançado` : 'Ver todos', cls:'', filter:null },
+    { icon:'<i class="fa-solid fa-circle-check" aria-hidden="true"></i>', n:nOk,   label:'No alvo',  sub:`${pct(nOk)}% do total`,   cls:'ok',   filter:'ok' },
+    { icon:'<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>', n:nWarn, label:'Atenção',  sub:`${pct(nWarn)}% do total`, cls:'warn', filter:'warn' },
+    { icon:'<i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>', n:nErr,  label:'Crítico',  sub:`${pct(nErr)}% do total`,  cls:'err',  filter:'err' },
   ];
   document.getElementById('dash-stats').innerHTML = cards.map(c => `
     <div class="dash-stat-card" onclick="showOrigem(${c.filter ? `'${c.filter}'` : ''})" title="Ver lista de indicadores">
@@ -499,7 +499,7 @@ function renderDashPendencias(kpis) {
   const tasks = all.slice(0, 6);
   if (!tasks.length) {
     document.getElementById('dash-pend-tbody').innerHTML =
-      '<tr><td colspan="4"><div class="empty-state"><div class="empty-state-icon">🎉</div><div class="empty-state-t">Nenhuma pendência em aberto</div></div></td></tr>';
+      '<tr><td colspan="4"><div class="empty-state"><div class="empty-state-icon"><i class="fa-solid fa-circle-check" aria-hidden="true"></i></div><div class="empty-state-t">Nenhuma pendência em aberto</div></div></td></tr>';
     return;
   }
   let rows = '';
@@ -599,11 +599,11 @@ function showOrigem(statusFilter) {
     document.getElementById('origem-areas').innerHTML = `
       <div class="origem-filter-banner">
         <span><strong>${filtered.length}</strong> indicador(es) — <strong>${filterLabel}</strong></span>
-        <button class="sec-btn" onclick="showOrigem()">✕ Limpar filtro</button>
+        <button class="sec-btn" onclick="showOrigem()"><i class="fa-solid fa-xmark" aria-hidden="true"></i> Limpar filtro</button>
       </div>
       <div class="kpi-cards-grid">${filtered.length
         ? buildKpiCardsGridHTML(filtered)
-        : '<div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-t">Nenhum indicador nessa situação</div></div>'}</div>`;
+        : '<div class="empty-state"><div class="empty-state-icon"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></div><div class="empty-state-t">Nenhum indicador nessa situação</div></div>'}</div>`;
     return;
   }
 
@@ -650,7 +650,7 @@ function renderTarefasList() {
   const tasks = openTasksFor(allowedKPIs());
   if (!tasks.length) {
     document.getElementById('tarefas-tbody').innerHTML =
-      '<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">🎉</div><div class="empty-state-t">Nenhuma tarefa em aberto</div></div></td></tr>';
+      '<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon"><i class="fa-solid fa-circle-check" aria-hidden="true"></i></div><div class="empty-state-t">Nenhuma tarefa em aberto</div></div></td></tr>';
     return;
   }
   let rows = '';
@@ -726,7 +726,7 @@ async function saveMyAccount() {
     await apiUpdateMyAccount({ email, senha });
     document.getElementById('cfg-senha').value = '';
     if (email !== SESSION.email) { SESSION.email = email; DB.usuario.email = email; }
-    toast('✅ Conta atualizada!', 'ok');
+    toast('Conta atualizada!', 'ok');
   } catch (e) {
     toast('Erro ao salvar conta: ' + e.message, 'err');
   } finally {
@@ -805,7 +805,7 @@ async function showAuditoria() {
   highlightNav(null);
   updateNavTopActive();
   setBreadcrumb([{ label: 'Início', action: 'showIndex()' }, { label: 'Auditoria' }]);
-  document.getElementById('aud-body').innerHTML = '<div class="empty-state"><div class="empty-state-icon">⏳</div><div class="empty-state-t">Carregando…</div></div>';
+  document.getElementById('aud-body').innerHTML = '<div class="empty-state"><div class="empty-state-icon"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i></div><div class="empty-state-t">Carregando…</div></div>';
   await carregarAuditoria();
   renderAuditoria();
 }
@@ -949,7 +949,7 @@ function renderAuditoria() {
   if (auditTab === 'acessos') {
     const sess = _buildSessoes(_auditAcessos, _auditPings).filter(s => passaUser(s.usuario) && passaData(s.inicio));
     if (!sess.length) {
-      body.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🕑</div><div class="empty-state-t">Nenhum acesso registrado no período</div></div>';
+      body.innerHTML = '<div class="empty-state"><div class="empty-state-icon"><i class="fa-solid fa-clock" aria-hidden="true"></i></div><div class="empty-state-t">Nenhum acesso registrado no período</div></div>';
       return;
     }
     let rows = '';
@@ -983,7 +983,7 @@ function renderAuditoria() {
   alt.sort((a, b) => _logMs(b.data_hora) - _logMs(a.data_hora));
 
   if (!alt.length) {
-    body.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><div class="empty-state-t">Nenhuma alteração no período/filtro</div></div>';
+    body.innerHTML = '<div class="empty-state"><div class="empty-state-icon"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i></div><div class="empty-state-t">Nenhuma alteração no período/filtro</div></div>';
     return;
   }
   let rows = '';
@@ -1111,7 +1111,7 @@ function renderMetasTable(resultados, kpi) {
 
   if (!resultados.length) {
     document.getElementById('metas-tbody').innerHTML =
-      '<tr><td colspan="10"><div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-t">Nenhuma meta cadastrada</div></div></td></tr>';
+      '<tr><td colspan="10"><div class="empty-state"><div class="empty-state-icon"><i class="fa-solid fa-chart-column" aria-hidden="true"></i></div><div class="empty-state-t">Nenhuma meta cadastrada</div></div></td></tr>';
     return;
   }
 
@@ -1193,7 +1193,7 @@ function renderProjTable(kpiId, kpi) {
   const projs = DB.projetos.filter(p => p.id_kpi === kpiId && p.ativo);
   if (!projs.length) {
     document.getElementById('proj-tbody').innerHTML =
-      '<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-t">Nenhum projeto cadastrado</div></div></td></tr>';
+      '<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i></div><div class="empty-state-t">Nenhum projeto cadastrado</div></div></td></tr>';
     return;
   }
 
@@ -1204,7 +1204,7 @@ function renderProjTable(kpiId, kpi) {
     const prCls = prioBadgeClass(p.prioridade);
     const actionBtns = canEdit
       ? `<button class="tbl-btn" onclick="openProjModal('${p.id}')">Editar</button>
-         <button class="tbl-btn-del" onclick="deleteProject('${p.id}')" title="Excluir projeto">🗑️</button>`
+         <button class="tbl-btn-del" onclick="deleteProject('${p.id}')" title="Excluir projeto"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>`
       : '';
     rows += `<tr>
       <td>
@@ -1385,7 +1385,7 @@ async function addComentario() {
     }
     input.value = '';
     await renderComentarios(idKpi);
-    toast('💬 Comentário enviado.', 'ok');
+    toast('Comentário enviado.', 'ok');
   } catch (e) {
     toast('Erro ao enviar comentário: ' + (e.message || e), 'err');
   } finally {
@@ -1620,7 +1620,7 @@ function updatePesoTotalHint() {
   const pct = (totalComEsta * 100).toFixed(0);
 
   if (totalComEsta > 1.001) {
-    hintEl.innerHTML = `⚠ Total da Frente ficaria em <b>${pct}%</b> — ao salvar, os outros KPIs serão reduzidos proporcionalmente para fechar em 100%.`;
+    hintEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Total da Frente ficaria em <b>${pct}%</b> — ao salvar, os outros KPIs serão reduzidos proporcionalmente para fechar em 100%.`;
     hintEl.style.color = 'var(--warn)';
   } else {
     hintEl.textContent = `Total da Frente com este peso: ${pct}%`;
@@ -1799,7 +1799,7 @@ function saveDrawer() {
   const msgRebal = metasRebalanceadas.length
     ? ` Peso de ${metasRebalanceadas.length} outra${metasRebalanceadas.length>1?'s':''} meta${metasRebalanceadas.length>1?'s':''} ajustado p/ manter o total em 100%.`
     : '';
-  toast((isNew ? '✅ Novo KPI criado com sucesso!' : '✅ KPI salvo com sucesso!') + msgRebal, 'ok');
+  toast((isNew ? 'Novo KPI criado com sucesso!' : 'KPI salvo com sucesso!') + msgRebal, 'ok');
 
   // Persiste no servidor. isNew foi capturado ANTES do delete _isNew acima,
   // por isso é passado explicitamente (senão a API faria UPDATE de meta inexistente).
@@ -1854,7 +1854,7 @@ function deleteMeta(metaId) {
   }
 
   const msgRenum = renumeradas.length ? ' Numeração das demais metas ajustada.' : '';
-  toast('🗑️ KPI excluído.' + msgRenum, '');
+  toast('KPI excluído.' + msgRenum, '');
   if (currentKpiId) showKPI(currentKpiId);
 }
 
@@ -1926,7 +1926,7 @@ function saveKpiEdit() {
   kpi.area         = area;
 
   closeKpiEdit();
-  toast('✅ KPI atualizado!', 'ok');
+  toast('KPI atualizado!', 'ok');
   showKPI(currentKpiId); // re-renderiza o cabeçalho
 
   // Persiste no servidor
@@ -2021,7 +2021,7 @@ function saveProject() {
     p.data_atualizacao     = now;
     p.usuario_atualizacao  = SESSION.email;
     addLog('UPDATE', 'projetos', p.id, 'status', '', p.status);
-    toast('✅ Projeto atualizado!', 'ok');
+    toast('Projeto atualizado!', 'ok');
   } else {
     const newId = (typeof crypto !== 'undefined' && crypto.randomUUID)
       ? crypto.randomUUID()
@@ -2048,7 +2048,7 @@ function saveProject() {
     };
     DB.projetos.push(newP);
     addLog('INSERT', 'projetos', newP.id, 'nome', '', newP.nome);
-    toast('✅ Projeto criado!', 'ok');
+    toast('Projeto criado!', 'ok');
   }
 
   // Persiste no servidor
@@ -2086,7 +2086,7 @@ function deleteProject(projId) {
       .catch(err => toast('Erro ao excluir no servidor: ' + err.message, 'err'));
   }
 
-  toast('🗑️ Projeto excluído.', '');
+  toast('Projeto excluído.', '');
   const kpi = KPIS.find(k => k.id === currentKpiId);
   if (kpi) renderProjTable(currentKpiId, kpi);
 }
@@ -2153,7 +2153,7 @@ async function loadAndRenderUsers() {
 function renderUsersTable(users) {
   if (!users.length) {
     document.getElementById('users-tbody').innerHTML =
-      '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">👤</div><div class="empty-state-t">Nenhum usuário cadastrado</div></div></td></tr>';
+      '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon"><i class="fa-solid fa-user" aria-hidden="true"></i></div><div class="empty-state-t">Nenhum usuário cadastrado</div></div></td></tr>';
     return;
   }
   const PERFIL_LABEL = { Admin: 'Administrador', DiretorN1: 'Diretoria N1', Responsavel: 'Responsável', responsavel: 'Responsável', administrador: 'Administrador', diretoria_n1: 'Diretoria N1' };
@@ -2308,7 +2308,7 @@ async function saveUser() {
         if (!quer && tinha)  k.responsaveis = (k.responsaveis||[]).filter(r => r !== (oldNome||nome));
       }
       closeUserModal();
-      toast(isNew ? '✅ Usuário criado!' : '✅ Usuário atualizado!', 'ok');
+      toast(isNew ? 'Usuário criado!' : 'Usuário atualizado!', 'ok');
       loadAndRenderUsers();
       return;
     }
@@ -2318,9 +2318,9 @@ async function saveUser() {
     await apiSyncKpiAccess(nome, selectedKpiIds, perfil);
     closeUserModal();
     if (isNew) {
-      toast('✅ Usuário criado! Login já ativo — pode entrar com a senha definida.', 'ok');
+      toast('Usuário criado! Login já ativo — pode entrar com a senha definida.', 'ok');
     } else {
-      toast(senha ? '✅ Usuário atualizado (senha redefinida).' : '✅ Usuário atualizado!', 'ok');
+      toast(senha ? 'Usuário atualizado (senha redefinida).' : 'Usuário atualizado!', 'ok');
     }
     loadAndRenderUsers();
   } catch(e) {
@@ -2342,14 +2342,14 @@ function deleteUserConfirm() {
     // Remove dos KPIs
     for (const k of KPIS) k.responsaveis = (k.responsaveis||[]).filter(r => r !== u.responsavel);
     closeUserModal();
-    toast('🗑️ Usuário removido.', '');
+    toast('Usuário removido.', '');
     loadAndRenderUsers();
     return;
   }
   apiDeleteUser(email)
     .then((r) => {
       closeUserModal();
-      toast(r && r.note ? '🗑️ Login removido (perfil mantido inativo).' : '🗑️ Usuário e login removidos.', '');
+      toast(r && r.note ? 'Login removido (perfil mantido inativo).' : 'Usuário e login removidos.', '');
       loadAndRenderUsers();
     })
     .catch(e => toast('Erro ao excluir: ' + e.message, 'err'));

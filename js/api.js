@@ -51,7 +51,7 @@ if (isLiveMode()) {
     if (event !== 'SIGNED_OUT') return;
     if (_intentionalLogout) { _intentionalLogout = false; return; }
     if (SESSION) {
-      toast('⚠️ Sua sessão expirou. Faça login novamente.', 'err');
+      toast('Sua sessão expirou. Faça login novamente.', 'err');
       encerrarSessaoAcesso();
       logout();
       DB.usuario = null;

@@ -28,17 +28,17 @@ function areaLabel(area) {
   return AREA_LABELS[area] || area;
 }
 
-// Ícone só de exibição — nenhuma dependência de biblioteca de ícones/SVG externo.
+// Ícone de exibição — classes Font Awesome (padrão de ícones do DS ADB).
 const AREA_ICONS = {
-  'ORGANIZACIONAL':        '⭐',
-  'ADMINISTRATIVOS':       '🏢',
-  'EDUCACAO':              '🎓',
-  'AREA_PRODUTIVA':        '🌾',
-  'INVESTIMENTOS_SOCIAIS': '💰',
-  'PROGRAMAS_SOCIAIS':     '🤝',
+  'ORGANIZACIONAL':        'fa-star',
+  'ADMINISTRATIVOS':       'fa-building',
+  'EDUCACAO':              'fa-graduation-cap',
+  'AREA_PRODUTIVA':        'fa-wheat-awn',
+  'INVESTIMENTOS_SOCIAIS': 'fa-hand-holding-dollar',
+  'PROGRAMAS_SOCIAIS':     'fa-people-group',
 };
 function areaIcon(area) {
-  return AREA_ICONS[area] || '📌';
+  return `<i class="fa-solid ${AREA_ICONS[area] || 'fa-location-dot'}" aria-hidden="true"></i>`;
 }
 
 // Exibe responsáveis do KPI; retorna 'A definir' para KPIs sem responsável definido
