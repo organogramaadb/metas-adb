@@ -5,6 +5,10 @@
 // ── Sessão ────────────────────────────────────────────────────────
 let SESSION = null;
 
+// Filtro de período (quadrimestre/semestre). Janela de meses inclusiva usada em toda a
+// apuração; {from:1,to:12} = acumulado do ano. Alterado pelo seletor global (app.js).
+let PERIODO_FILTRO = { from: 1, to: 12 };
+
 function login(email, senha) {
   const u = USUARIOS.find(x => x.email.toLowerCase() === email.toLowerCase() && x.senha === senha && x.ativo);
   if (!u) return null;
@@ -135,10 +139,12 @@ function getMesesComRealizado(idMeta, ano) {
   const registros = DB.metasMensais.filter(m => m.id_meta === idMeta && m.ano === ano);
   // Ordena por mês
   registros.sort((a, b) => a.mes - b.mes);
-  // Acha último mês com realizado
+  // Acha o último mês com realizado DENTRO do período filtrado (quadrimestre/semestre/ano).
+  const { from, to } = PERIODO_FILTRO;
   let ultimoMes = 0;
   for (const r of registros) {
-    if (r.valor_realizado !== null && r.valor_realizado !== undefined && r.valor_realizado !== '') {
+    if (r.mes >= from && r.mes <= to &&
+        r.valor_realizado !== null && r.valor_realizado !== undefined && r.valor_realizado !== '') {
       ultimoMes = r.mes;
     }
   }
@@ -182,7 +188,7 @@ function calcMeta(meta, ano) {
     }
     let metaSum = 0, realSum = 0, nMeta = 0, nReal = 0;
     for (const r of registros) {
-      if (r.mes <= ultimoMes) {
+      if (r.mes >= PERIODO_FILTRO.from && r.mes <= ultimoMes) {
         const vm = (r.valor_meta      != null && r.valor_meta      !== '') ? parseFloat(r.valor_meta)      : null;
         const vr = (r.valor_realizado != null && r.valor_realizado !== '') ? parseFloat(r.valor_realizado) : null;
         if (vm !== null) { metaSum += vm; nMeta++; }
@@ -211,29 +217,68 @@ function calcMeta(meta, ano) {
     scoringAt   = 1;
   }
 
-  // Pontuação ponderada usa scoringAt (≥100% = full, 90-100% = linear, <90% = 0)
-  let pontuacao = 0;
-  if (scoringAt !== null) {
-    if (scoringAt >= 1.0) {
-      pontuacao = meta.peso;
-    } else if (scoringAt >= 0.9) {
-      pontuacao = meta.peso * ((scoringAt - 0.9) / 0.1);
-    }
-  }
+  // Pontuação (contribuição) = peso × atingimento, linear e SEM teto (reforma da malha, out/2026).
+  // A régua antiga (travava em 100%, zerava abaixo de 90%) foi removida: 140% contribui 1,40×peso.
+  const pontuacao = (scoringAt !== null) ? meta.peso * scoringAt : 0;
 
   return { metaAc, realAc, atingimento, scoringAt, pontuacao, ultimoMes, registros };
 }
 
 /**
- * Calcula o consolidado de um KPI (soma das pontuações ponderadas).
- * Retorna: { totalPontuacao, resultados[], ultimoMes }
+ * Consolida uma frente (card) na malha de 3 níveis:
+ *   CARD → SINTÉTICO (bucket temático) → ANALÍTICO (indicador).
+ * atingimento do bucket = média ponderada (renormalizada) dos analíticos COM dado;
+ * atingimento do card   = média ponderada (renormalizada) dos buckets COM dado.
+ * cobertura = fração do peso que de fato tem lançamento (selo de completude).
+ *
+ * Retorna: { totalPontuacao, cobertura, resultados[], sinteticos[], ultimoMes }
+ *   totalPontuacao — atingimento do card (pode passar de 1 = 100%, sem teto)
+ *   cobertura      — 0..1, quanto do peso do card já tem dado lançado
+ *   resultados[]   — analíticos achatados { meta, ...calcMeta } (compat. tela de detalhe atual)
+ *   sinteticos[]   — [{ sint, atingimento, cobertura, filhos[], ultimoMes }] (p/ a UI de buckets, Fase B)
+ * Card sem nível SINTÉTICO (legado/plano) cai no mesmo cálculo tratando o card como bucket único.
  */
 function calcKPI(kpiId, ano) {
-  const metas = DB.metas.filter(m => m.id_kpi === kpiId && m.ativo);
-  const resultados = metas.map(m => ({ meta: m, ...calcMeta(m, ano) }));
-  const totalPontuacao = resultados.reduce((s, r) => s + r.pontuacao, 0);
-  const ultimoMes = Math.max(0, ...resultados.map(r => r.ultimoMes));
-  return { totalPontuacao, resultados, ultimoMes };
+  const todas = DB.metas.filter(m => m.id_kpi === kpiId && m.ativo);
+  const sints = todas.filter(m => m.nivel === 'SINTETICO');
+
+  // Média ponderada renormalizada entre os filhos COM dado (scoringAt !== null).
+  const rollup = (filhos) => {
+    const comDado = filhos.filter(r => r.scoringAt !== null);
+    const num     = comDado.reduce((a, r) => a + r.peso * r.scoringAt, 0);
+    const den     = comDado.reduce((a, r) => a + r.peso, 0);
+    const pesoAll = filhos.reduce((a, r) => a + r.peso, 0);
+    return { atingimento: den > 0 ? num / den : null, cobertura: pesoAll > 0 ? den / pesoAll : 0 };
+  };
+
+  // Caso legado/plano: sem sintéticos, os analíticos penduram direto no card.
+  if (sints.length === 0) {
+    const resultados = todas.map(m => ({ meta: m, ...calcMeta(m, ano) }));
+    const { atingimento, cobertura } = rollup(resultados.map(r => ({ scoringAt: r.scoringAt, peso: r.meta.peso })));
+    const ultimoMes = Math.max(0, ...resultados.map(r => r.ultimoMes));
+    return { totalPontuacao: atingimento || 0, cobertura, resultados, sinteticos: [], ultimoMes };
+  }
+
+  // Malha de 3 níveis.
+  const sinteticos = sints.map(s => {
+    const filhos = todas
+      .filter(m => m.nivel === 'ANALITICO' && m.id_pai === s.id)
+      .map(m => ({ meta: m, ...calcMeta(m, ano) }));
+    const { atingimento, cobertura } = rollup(filhos.map(r => ({ scoringAt: r.scoringAt, peso: r.meta.peso })));
+    const ultimoMes = Math.max(0, ...filhos.map(r => r.ultimoMes));
+    return { sint: s, atingimento, cobertura, filhos, ultimoMes };
+  });
+
+  const card = rollup(sinteticos.map(s => ({ scoringAt: s.atingimento, peso: s.sint.peso })));
+  // Cobertura do card: pondera a cobertura de cada bucket pelo peso do sintético (vê buckets parciais).
+  const pesoAllS = sinteticos.reduce((a, s) => a + s.sint.peso, 0);
+  const coberturaCard = pesoAllS > 0
+    ? sinteticos.reduce((a, s) => a + s.sint.peso * s.cobertura, 0) / pesoAllS
+    : 0;
+
+  const resultados = sinteticos.flatMap(s => s.filhos);   // compat. com a tela de detalhe atual
+  const ultimoMes  = Math.max(0, ...sinteticos.map(s => s.ultimoMes));
+  return { totalPontuacao: card.atingimento || 0, cobertura: coberturaCard, resultados, sinteticos, ultimoMes };
 }
 
 // Reaplica a mesma lógica de scoringAt do calcMeta, mas cortando os meses em
@@ -248,7 +293,7 @@ function calcMetaScoringAtCutoff(meta, ano, cutoffMes) {
   const registros = DB.metasMensais.filter(m => m.id_meta === meta.id && m.ano === ano);
   let metaSum = 0, realSum = 0, nMeta = 0, nReal = 0;
   for (const r of registros) {
-    if (r.mes > cutoffMes) continue;
+    if (r.mes < PERIODO_FILTRO.from || r.mes > cutoffMes) continue;
     const vm = (r.valor_meta      != null && r.valor_meta      !== '') ? parseFloat(r.valor_meta)      : null;
     const vr = (r.valor_realizado != null && r.valor_realizado !== '') ? parseFloat(r.valor_realizado) : null;
     if (vm !== null) { metaSum += vm; nMeta++; }
@@ -268,19 +313,34 @@ function calcMetaScoringAtCutoff(meta, ano, cutoffMes) {
  * pra comparar (só 1 mês de histórico, ou nenhuma meta comparável — ex.: só
  * metas em modo manual).
  */
-function calcKPITrend(kpiId, ano) {
-  const { totalPontuacao, resultados, ultimoMes } = calcKPI(kpiId, ano);
-  if (ultimoMes <= 1) return null;
-  let prevTotal = 0, comparavel = false;
-  for (const r of resultados) {
-    const prevScoringAt = calcMetaScoringAtCutoff(r.meta, ano, ultimoMes - 1);
-    if (prevScoringAt === null) continue;
-    comparavel = true;
-    if (prevScoringAt >= 1.0)      prevTotal += r.meta.peso;
-    else if (prevScoringAt >= 0.9) prevTotal += r.meta.peso * ((prevScoringAt - 0.9) / 0.1);
+// Reaplica o rollup de 3 níveis cortando os meses em `cutoff` (usa calcMetaScoringAtCutoff
+// por analítico). Retorna o atingimento do card até aquele mês, ou null se não dá pra comparar.
+function calcCardAtingimentoAtCutoff(kpiId, ano, cutoff) {
+  const todas = DB.metas.filter(m => m.id_kpi === kpiId && m.ativo);
+  const sints = todas.filter(m => m.nivel === 'SINTETICO');
+  const roll = (filhos) => {
+    let num = 0, den = 0;
+    for (const f of filhos) {
+      const a = calcMetaScoringAtCutoff(f, ano, cutoff);
+      if (a != null) { num += f.peso * a; den += f.peso; }
+    }
+    return den > 0 ? num / den : null;
+  };
+  if (sints.length === 0) return roll(todas);
+  let num = 0, den = 0;
+  for (const s of sints) {
+    const atB = roll(todas.filter(m => m.nivel === 'ANALITICO' && m.id_pai === s.id));
+    if (atB != null) { num += s.peso * atB; den += s.peso; }
   }
-  if (!comparavel) return null;
-  const delta = totalPontuacao - prevTotal;
+  return den > 0 ? num / den : null;
+}
+
+function calcKPITrend(kpiId, ano) {
+  const { totalPontuacao, ultimoMes } = calcKPI(kpiId, ano);
+  if (ultimoMes <= 1) return null;
+  const prev = calcCardAtingimentoAtCutoff(kpiId, ano, ultimoMes - 1);
+  if (prev == null) return null;
+  const delta = totalPontuacao - prev;
   if (Math.abs(delta) < 0.005) return 'estavel'; // variação < 0,5 p.p. — não vale destacar
   return delta > 0 ? 'alta' : 'baixa';
 }

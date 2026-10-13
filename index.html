@@ -13,7 +13,7 @@
 <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
 <!-- Ícones da marca (DS ADB): Font Awesome Free solid, no lugar de emojis -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" referrerpolicy="no-referrer">
-<link rel="stylesheet" href="style.css?v=20261002c">
+<link rel="stylesheet" href="style.css?v=20261009d">
 <script>
 // Aplica o tema salvo antes da primeira renderização, evitando flash de tela clara.
 (function(){
@@ -80,7 +80,17 @@
     <div class="sb-crumb" id="breadcrumb">
       <a onclick="showIndex()">Início</a>
     </div>
-    <div class="sb-ano" id="sb-ano">Exercício 2026</div>
+    <div class="sb-ano" id="sb-ano">
+      <select id="sel-periodo" class="sb-periodo" onchange="setPeriodoFiltro(this.value)" title="Período de apuração">
+        <option value="ano">Acumulado (ano)</option>
+        <option value="q1">1º Quadrimestre · Jan–Abr</option>
+        <option value="q2">2º Quadrimestre · Mai–Ago</option>
+        <option value="q3">3º Quadrimestre · Set–Dez</option>
+        <option value="s1">1º Semestre · Jan–Jun</option>
+        <option value="s2">2º Semestre · Jul–Dez</option>
+      </select>
+      <span class="sb-ano-txt">Exercício 2026</span>
+    </div>
   </div>
 
   <!-- Layout principal -->
@@ -812,10 +822,10 @@
 ════════════════════════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- ?v= força o navegador a buscar a versão nova após cada publicação (cache-busting). Incrementar a cada deploy. -->
-<script src="js/data.js?v=20261002c"></script>
-<script src="js/engine.js?v=20261002c"></script>
-<script src="js/api.js?v=20261002c"></script>
-<script src="js/app.js?v=20261002c"></script>
+<script src="js/data.js?v=20261009d"></script>
+<script src="js/engine.js?v=20261009d"></script>
+<script src="js/api.js?v=20261009d"></script>
+<script src="js/app.js?v=20261009d"></script>
 
 </body>
 </html>

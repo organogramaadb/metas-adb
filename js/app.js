@@ -12,6 +12,20 @@ let currentView = 'index';   // 'index' | 'origem' | 'kpi' | 'users' | 'tarefas'
 let editingUserEmail = null; // null = novo usuário
 let dashboardDrillArea = null; // frente em foco no dashboard (null = visão geral)
 
+// ── Período de apuração (seletor global quadrimestre/semestre) ────
+const PERIODOS = {
+  ano: { from: 1, to: 12 },
+  q1:  { from: 1, to: 4  }, q2: { from: 5, to: 8 }, q3: { from: 9, to: 12 },
+  s1:  { from: 1, to: 6  }, s2: { from: 7, to: 12 },
+};
+function setPeriodoFiltro(key) {
+  const p = PERIODOS[key] || PERIODOS.ano;
+  PERIODO_FILTRO = { from: p.from, to: p.to };   // global do engine.js
+  // Re-renderiza a view atual com a nova janela de meses.
+  if (currentView === 'kpi' && currentKpiId) showKPI(currentKpiId);
+  else if (currentView === 'index') showIndex(dashboardDrillArea);
+}
+
 // ── Toast ─────────────────────────────────────────────────────────
 let toastTimer;
 function toast(msg, tipo = '') {
@@ -1047,64 +1061,116 @@ function showKPI(kpiId) {
   document.getElementById('print-header-meta').textContent =
     `Responsável: ${kpiResps(kpi)} · Diretoria: ${kpi.diretoria} · Gerado em ${new Date().toLocaleDateString('pt-BR')}`;
 
-  const { totalPontuacao, resultados, ultimoMes } = calcKPI(kpiId, ANO_ATUAL);
+  const kcalc = calcKPI(kpiId, ANO_ATUAL);
+  const { resultados, ultimoMes } = kcalc;
+  const fromAbbr = MESES_ABREV[PERIODO_FILTRO.from - 1];
   document.getElementById('kpi-periodo-hd').textContent =
-    ultimoMes > 0 ? `Jan – ${MESES_ABREV[ultimoMes-1]} 2026 (acumulado)` : 'Jan – Dez 2026';
+    ultimoMes > 0 ? `${fromAbbr} – ${MESES_ABREV[ultimoMes-1]} 2026 (acumulado)` : 'Sem realizado no período';
 
-  // Cards superiores
-  renderCards(totalPontuacao, resultados, ultimoMes);
+  // Cards superiores (agrupados por bucket sintético)
+  renderCards(kcalc);
 
-  // Tabela de metas
-  renderMetasTable(resultados, kpi);
+  // Tabela de metas (agrupada por bucket sintético)
+  renderMetasTable(kcalc, kpi);
 
   // Projetos
   renderProjTable(kpiId, kpi);
 }
 
 // ── Cards ─────────────────────────────────────────────────────────
-function renderCards(totalPontuacao, resultados, ultimoMes) {
-  const cls = scoreClass(totalPontuacao);
-  const pctDisplay = (totalPontuacao * 100).toFixed(1) + '%';
+// Selo de cobertura: fração do peso que já tem dado lançado (completude).
+function coberturaChip(cob) {
+  if (cob === null || cob === undefined) return '';
+  const p = Math.round(cob * 100);
+  const full = p >= 100;
+  return `<span class="cob-chip${full ? ' full' : ''}" title="Cobertura: ${p}% do peso já tem dado lançado">`
+    + `<i class="fa-solid fa-circle-half-stroke" aria-hidden="true"></i> Cobertura ${p}%</span>`;
+}
+
+// Tile de um analítico (nível folha).
+function analiticoTile(r) {
+  const cls2 = scoreClass(r.scoringAt);
+  const atDisplay = r.atingimento !== null ? fmtPct(r.atingimento) : '—';
+  const barW2 = r.scoringAt !== null ? Math.min(100, r.scoringAt * 100).toFixed(1) : 0;
+  const pts = (r.pontuacao * 100).toFixed(1) + '%';
+  return `<div class="card-meta" onclick="openDrawer('${r.meta.id}')">
+    <div class="cm-num">${r.meta.estrutura || ('KPI ' + r.meta.seq)}</div>
+    <div class="cm-name">${r.meta.nome}</div>
+    <div class="cm-pct ${cls2}">${atDisplay}</div>
+    <div class="cm-bar"><div class="cm-bar-fill ${cls2}" style="width:${barW2}%"></div></div>
+    <div class="cm-foot">
+      <span>Peso: ${(r.meta.peso * 100).toFixed(0)}%</span>
+      <span>${r.meta.bom_quando === 'maior' ? '↑ Maior' : '↓ Menor'}</span>
+    </div>
+    <div class="cm-pts">Pts: ${pts}</div>
+  </div>`;
+}
+
+function renderCards(kcalc) {
+  const { totalPontuacao, cobertura, sinteticos, resultados, ultimoMes } = kcalc;
+  const temDado = ultimoMes > 0;
+  const pctDisplay = temDado ? (totalPontuacao * 100).toFixed(1) + '%' : '—';
   const barW = Math.min(100, totalPontuacao * 100).toFixed(1);
-  const periodo = ultimoMes > 0 ? `Acum. até ${MESES_ABREV[ultimoMes-1]}/2026` : 'Sem realizado apurado';
+  const fromAbbr = MESES_ABREV[PERIODO_FILTRO.from - 1];
+  const periodo = temDado ? `Acum. ${fromAbbr} – ${MESES_ABREV[ultimoMes-1]}/2026` : 'Sem realizado no período';
 
   let html = `<div class="card-total">
     <div class="ct-label">Pontuação Total da Frente</div>
     <div class="ct-pct">${pctDisplay}</div>
     <div class="ct-sub">${periodo}</div>
+    ${temDado ? `<div class="ct-cob">${coberturaChip(cobertura)}</div>` : ''}
     <div class="ct-bar"><div class="ct-bar-fill" style="width:${barW}%"></div></div>
   </div>`;
 
-  for (const r of resultados) {
-    const at = r.atingimento;
-    const cls2 = scoreClass(r.scoringAt);
-    const atDisplay = at !== null ? fmtPct(at) : '—';
-    const barW2 = r.scoringAt !== null ? Math.min(100, r.scoringAt * 100).toFixed(1) : 0;
-    const pts = (r.pontuacao * 100).toFixed(1) + '%';
-    html += `<div class="card-meta" onclick="openDrawer('${r.meta.id}')">
-      <div class="cm-num">KPI ${r.meta.seq}</div>
-      <div class="cm-name">${r.meta.nome}</div>
-      <div class="cm-pct ${cls2}">${atDisplay}</div>
-      <div class="cm-bar"><div class="cm-bar-fill ${cls2}" style="width:${barW2}%"></div></div>
-      <div class="cm-foot">
-        <span>Peso: ${(r.meta.peso * 100).toFixed(0)}%</span>
-        <span>${r.meta.bom_quando === 'maior' ? '↑ Maior' : '↓ Menor'}</span>
-      </div>
-      <div class="cm-pts">Pts: ${pts}</div>
-    </div>`;
+  // Malha de 3 níveis: agrupa os analíticos sob o bucket sintético (recolhível).
+  if (sinteticos && sinteticos.length) {
+    html += `<div class="buckets-tools"><button type="button" class="mini-link" id="btn-toggle-buckets" onclick="toggleAllBuckets()"><i class="fa-solid fa-chevron-up" aria-hidden="true"></i> Recolher sintéticos</button></div>`;
+    for (const s of sinteticos) {
+      const bcls = scoreClass(s.atingimento);
+      const bpct = s.atingimento !== null ? fmtPct(s.atingimento) : '—';
+      html += `<div class="bucket">
+        <div class="bucket-head" onclick="toggleBucket(this)" title="Recolher/expandir">
+          <i class="fa-solid fa-chevron-down bk-chev" aria-hidden="true"></i>
+          <span class="bk-est">${s.sint.estrutura}</span>
+          <span class="bk-name">${s.sint.nome}</span>
+          <span class="bk-pct ${bcls}">${bpct}</span>
+          ${coberturaChip(s.cobertura)}
+          <span class="bk-peso">peso ${(s.sint.peso * 100).toFixed(0)}%</span>
+        </div>
+        <div class="bucket-tiles">${s.filhos.map(analiticoTile).join('')}</div>
+      </div>`;
+    }
+  } else {
+    // Card legado/plano: lista os analíticos direto.
+    html += `<div class="bucket-tiles">${resultados.map(analiticoTile).join('')}</div>`;
   }
 
   document.getElementById('kpi-cards-row').innerHTML = html;
   document.getElementById('metas-periodo-sub').textContent =
-    ultimoMes > 0 ? `Acumulado Jan – ${MESES_ABREV[ultimoMes-1]}/2026` : 'Sem realizado apurado';
+    temDado ? `Acumulado ${fromAbbr} – ${MESES_ABREV[ultimoMes-1]}/2026` : 'Sem realizado no período';
 }
 
-// ── Tabela de Metas ───────────────────────────────────────────────
-function renderMetasTable(resultados, kpi) {
-  // Somente o Administrador edita as metas do quadro de KPI.
-  const canEdit = isAdmin();
+// Recolhe/expande um bucket sintético (chevron, igual ao menu lateral).
+function toggleBucket(headEl) {
+  const b = headEl.closest('.bucket');
+  if (b) b.classList.toggle('collapsed');
+}
+// Recolhe ou expande todos os sintéticos de uma vez (atalho p/ visão de diretoria/conselho).
+function toggleAllBuckets() {
+  const buckets = [...document.querySelectorAll('#kpi-cards-row .bucket')];
+  const algumAberto = buckets.some(b => !b.classList.contains('collapsed'));
+  buckets.forEach(b => b.classList.toggle('collapsed', algumAberto));
+  const btn = document.getElementById('btn-toggle-buckets');
+  if (btn) btn.innerHTML = algumAberto
+    ? '<i class="fa-solid fa-chevron-down" aria-hidden="true"></i> Expandir sintéticos'
+    : '<i class="fa-solid fa-chevron-up" aria-hidden="true"></i> Recolher sintéticos';
+}
 
-  // Botões de seção
+// ── Tabela de Metas (agrupada por bucket sintético) ──────────────
+function renderMetasTable(kcalc, kpi) {
+  const { resultados, sinteticos } = kcalc;
+  const canEdit = isAdmin();   // Somente o Administrador edita as metas do quadro.
+
   document.getElementById('sec-btns-metas').innerHTML = canEdit
     ? `<button class="sec-btn" onclick="openDrawer(null,'${kpi.id}')">+ Novo KPI</button>`
     : '';
@@ -1115,12 +1181,11 @@ function renderMetasTable(resultados, kpi) {
     return;
   }
 
-  let rows = '';
-  for (const r of resultados) {
+  // Linha de um analítico.
+  const metaRow = (r) => {
     const m = r.meta;
-    const at = r.atingimento;
     const cls = scoreClass(r.scoringAt);
-    const atDisplay = at !== null ? fmtPct(at) : '—';
+    const atDisplay = r.atingimento !== null ? fmtPct(r.atingimento) : '—';
     const metaFmt = r.metaAc !== null ? fmt(r.metaAc, m.tipo_formato) : '—';
     const realFmt = r.realAc !== null ? fmt(r.realAc, m.tipo_formato) : '—';
     const pts = (r.pontuacao * 100).toFixed(1) + '%';
@@ -1149,12 +1214,10 @@ function renderMetasTable(resultados, kpi) {
     }
     dots += '</div>';
 
-    const editBtn = canEdit
-      ? `<button class="tbl-btn" onclick="openDrawer('${m.id}')">Editar</button>`
-      : `<button class="tbl-btn" onclick="openDrawer('${m.id}')">Ver</button>`;
+    const editBtn = `<button class="tbl-btn" onclick="openDrawer('${m.id}')">${canEdit ? 'Editar' : 'Ver'}</button>`;
 
-    rows += `<tr>
-      <td class="tbl-c" style="color:#bbb;font-weight:700">${m.seq}</td>
+    return `<tr>
+      <td class="tbl-c" style="color:#bbb;font-weight:700">${m.estrutura || m.seq}</td>
       <td>
         <div class="tbl-meta-name">${m.nome}</div>
         <div class="tbl-meta-desc">${m.descricao}</div>
@@ -1168,17 +1231,37 @@ function renderMetasTable(resultados, kpi) {
       <td>${dots}</td>
       <td class="tbl-c tbl-actions">${editBtn}</td>
     </tr>`;
-  }
+  };
 
-  // Totalizador da coluna Peso — mostra rápido se a distribuição bate 100%
-  // (sem travar nada aqui; a trava de verdade fica no campo do drawer)
-  const totalPeso = resultados.reduce((s, r) => s + (parseFloat(r.meta.peso) || 0), 0);
-  const pesoOk = Math.abs(totalPeso - 1) < 0.001;
-  rows += `<tr class="tbl-total-row">
-    <td colspan="3" class="tbl-total-label">Total de Peso dos KPIs</td>
-    <td class="tbl-peso tbl-peso-total ${pesoOk ? 'ok' : 'err'}">${(totalPeso * 100).toFixed(0)}%</td>
-    <td colspan="6"></td>
-  </tr>`;
+  // Cabeçalho de bucket (nível sintético): nome, atingimento, cobertura e soma de pesos dos analíticos.
+  const bucketRow = (s) => {
+    const bcls = scoreClass(s.atingimento);
+    const bpct = s.atingimento !== null ? fmtPct(s.atingimento) : '—';
+    const soma = s.filhos.reduce((a, r) => a + (parseFloat(r.meta.peso) || 0), 0);
+    const pesoOk = Math.abs(soma - 1) < 0.01;
+    return `<tr class="tbl-bucket-row"><td colspan="10">
+      <span class="tb-est">${s.sint.estrutura}</span>
+      <span class="tb-name">${s.sint.nome}</span>
+      <span class="tb-pct ${bcls}">${bpct}</span>
+      ${coberturaChip(s.cobertura)}
+      <span class="tb-peso">peso ${(s.sint.peso * 100).toFixed(0)}% · Σ analíticos <b class="${pesoOk ? 'ok' : 'err'}">${(soma * 100).toFixed(0)}%</b></span>
+    </td></tr>`;
+  };
+
+  let rows = '';
+  if (sinteticos && sinteticos.length) {
+    for (const s of sinteticos) rows += bucketRow(s) + s.filhos.map(metaRow).join('');
+  } else {
+    // Card legado/plano: lista direto + totalizador de peso da frente inteira.
+    rows += resultados.map(metaRow).join('');
+    const totalPeso = resultados.reduce((s, r) => s + (parseFloat(r.meta.peso) || 0), 0);
+    const pesoOk = Math.abs(totalPeso - 1) < 0.001;
+    rows += `<tr class="tbl-total-row">
+      <td colspan="3" class="tbl-total-label">Total de Peso dos KPIs</td>
+      <td class="tbl-peso tbl-peso-total ${pesoOk ? 'ok' : 'err'}">${(totalPeso * 100).toFixed(0)}%</td>
+      <td colspan="6"></td>
+    </tr>`;
+  }
 
   document.getElementById('metas-tbody').innerHTML = rows;
 }
@@ -1538,10 +1621,7 @@ function recalcDrawerLive() {
     } else if (metaAc === 0 && realAc === 0) {
       atingimento = 1; scoringAt = 1;
     }
-    if (scoringAt !== null) {
-      if (scoringAt >= 1.0) pontuacao = peso;
-      else if (scoringAt >= 0.9) pontuacao = peso * ((scoringAt - 0.9) / 0.1);
-    }
+    if (scoringAt !== null) pontuacao = peso * scoringAt;  // peso × atingimento, sem teto (reforma out/2026)
   }
 
   const cls = scoreClass(scoringAt);
