@@ -243,7 +243,7 @@ header{height:var(--hh);background:#111;display:flex;align-items:center;padding:
 .dash-frente-list{display:flex;flex-direction:column;gap:1px}
 .dash-frente-row{display:flex;align-items:center;gap:8px;padding:5px 7px;border-radius:5px;cursor:pointer;transition:background .15s}
 .dash-frente-row:hover{background:var(--surface-2)}
-.dash-frente-ic{font-size:13px;width:18px;text-align:center;flex-shrink:0}
+.dash-frente-ic{font-size:11px;font-weight:700;color:var(--t3);min-width:28px;text-align:center;flex-shrink:0;white-space:nowrap}
 .dash-frente-mid{flex:1;min-width:0}
 .dash-frente-name{font-size:11px;font-weight:600;color:var(--t1);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dash-frente-bar{height:3px;background:var(--surface-2);border-radius:2px}
