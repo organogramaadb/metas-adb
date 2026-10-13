@@ -1070,8 +1070,12 @@ function showKPI(kpiId) {
   // Cards superiores (agrupados por bucket sintético)
   renderCards(kcalc);
 
-  // Tabela de metas (agrupada por bucket sintético)
-  renderMetasTable(kcalc, kpi);
+  // Diretoria para na "primeira linha": o quadro detalhado "KPIs da Frente" não aparece.
+  const secMetasFrente = document.getElementById('sec-metas-frente');
+  if (secMetasFrente) secMetasFrente.style.display = isDiretoria() ? 'none' : '';
+
+  // Tabela de metas (agrupada por bucket sintético) — renderizada só quando visível
+  if (!isDiretoria()) renderMetasTable(kcalc, kpi);
 
   // Projetos
   renderProjTable(kpiId, kpi);
@@ -1123,12 +1127,14 @@ function renderCards(kcalc) {
   </div>`;
 
   // Malha de 3 níveis: agrupa os analíticos sob o bucket sintético (recolhível).
+  // Diretoria vê os sintéticos recolhidos por padrão (para na "primeira linha").
   if (sinteticos && sinteticos.length) {
-    html += `<div class="buckets-tools"><button type="button" class="mini-link" id="btn-toggle-buckets" onclick="toggleAllBuckets()"><i class="fa-solid fa-chevron-up" aria-hidden="true"></i> Recolher sintéticos</button></div>`;
+    const colapsado = isDiretoria();
+    html += `<div class="buckets-tools"><button type="button" class="mini-link" id="btn-toggle-buckets" onclick="toggleAllBuckets()"><i class="fa-solid fa-chevron-${colapsado ? 'down' : 'up'}" aria-hidden="true"></i> ${colapsado ? 'Expandir' : 'Recolher'} sintéticos</button></div>`;
     for (const s of sinteticos) {
       const bcls = scoreClass(s.atingimento);
       const bpct = s.atingimento !== null ? fmtPct(s.atingimento) : '—';
-      html += `<div class="bucket">
+      html += `<div class="bucket${colapsado ? ' collapsed' : ''}">
         <div class="bucket-head" onclick="toggleBucket(this)" title="Recolher/expandir">
           <i class="fa-solid fa-chevron-down bk-chev" aria-hidden="true"></i>
           <span class="bk-est">${s.sint.estrutura}</span>

@@ -54,6 +54,8 @@ function kpiResps(kpi) {
 // ── Permissões ────────────────────────────────────────────────────
 function isAdmin()      { return SESSION && (SESSION.perfil === 'Admin'); }
 function isDiretorN1()  { return SESSION && (SESSION.perfil === 'DiretorN1'); }
+// Diretoria (N1 ou Diretor): visão de topo — para na "primeira linha" dos sintéticos.
+function isDiretoria()  { return SESSION && (SESSION.perfil === 'DiretorN1' || SESSION.perfil === 'Diretor'); }
 function canSeeAll()    { return isAdmin() || isDiretorN1(); }
 
 function canSeeKPI(kpi) {
